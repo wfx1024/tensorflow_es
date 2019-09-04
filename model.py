@@ -13,9 +13,7 @@ from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer
 class yolov3(object):
     def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
 
-        # self.anchors = [[10, 13], [16, 30], [33, 23],
-                         # [30, 61], [62, 45], [59,  119],
-                         # [116, 90], [156, 198], [373,326]]
+        # self.anchors = [[10, 13], [16, 30], [33, 23], [30, 61], [62, 45], [59,  119], [116, 90], [156, 198], [373,326]]
         self.class_num = class_num  # 类别数量
         self.anchors = anchors
         self.batch_norm_decay = batch_norm_decay
@@ -31,9 +29,10 @@ class yolov3(object):
         # the input img_size, form: [height, weight]
         # it will be used later
         self.img_size = tf.shape(inputs)[1:3]
-        # set batch norm params
+
+        # 定义batch normalization（批量标准化/归一化）的参数字典
         batch_norm_params = {
-            'decay': self.batch_norm_decay,
+            'decay': self.batch_norm_decay,  # 衰减系数
             'epsilon': 1e-05,
             'scale': True,
             'is_training': is_training,
@@ -43,33 +42,37 @@ class yolov3(object):
         with slim.arg_scope([slim.conv2d, slim.batch_norm], reuse=reuse):
             with slim.arg_scope(
                     [slim.conv2d],
-                    normalizer_fn=slim.batch_norm,
+                    normalizer_fn=slim.batch_norm,  # Batch Normalize
                     normalizer_params=batch_norm_params,
                     biases_initializer=None,
-                    activation_fn=lambda x: tf.nn.leaky_relu(x, alpha=0.1),
-                    weights_regularizer=slim.l2_regularizer(self.weight_decay)  # relu 函数
-            ):
+                    activation_fn=lambda x: tf.nn.leaky_relu(x, alpha=0.1),  # relu 函数
+                    weights_regularizer=slim.l2_regularizer(self.weight_decay)):   # L2正则化
+
+                # DarkNet-53
                 with tf.variable_scope('darknet53_body'):
                     route_1, route_2, route_3 = darknet53_body(inputs)
 
+                # 检测层
                 with tf.variable_scope('yolov3_head'):
                     inter1, net = yolo_block(route_3, 512)
                     feature_map_1 = slim.conv2d(
                         net, 3 * (5 + self.class_num), 1,
                         stride=1, normalizer_fn=None,
-                        activation_fn=None, biases_initializer=tf.zeros_initializer()
+                        activation_fn=None, biases_initializer=tf.zeros_initializer(),
                     )
-                    feature_map_1 = tf.identity(feature_map_1, name='feature_map_1')
+                    # feature_map_1 = tf.identity(feature_map_1, name='feature_map_1')  # 赋值，命名，流程控制
 
                     inter1 = conv2d(inter1, 256, 1)
                     inter1 = upsample_layer(inter1, route_2.get_shape().as_list() if self.use_static_shape else tf.shape(route_2))
                     concat1 = tf.concat([inter1, route_2], axis=3)
 
                     inter2, net = yolo_block(concat1, 256)
-                    feature_map_2 = slim.conv2d(net, 3 * (5 + self.class_num), 1,
-                                                stride=1, normalizer_fn=None,
-                                                activation_fn=None, biases_initializer=tf.zeros_initializer())
-                    feature_map_2 = tf.identity(feature_map_2, name='feature_map_2')
+                    feature_map_2 = slim.conv2d(
+                        net, 3 * (5 + self.class_num), 1,
+                        stride=1, normalizer_fn=None,
+                        activation_fn=None, biases_initializer=tf.zeros_initializer()
+                    )
+                    # feature_map_2 = tf.identity(feature_map_2, name='feature_map_2')
 
                     inter2 = conv2d(inter2, 128, 1)
                     inter2 = upsample_layer(inter2, route_1.get_shape().as_list() if self.use_static_shape else tf.shape(route_1))
@@ -84,11 +87,14 @@ class yolov3(object):
             return feature_map_1, feature_map_2, feature_map_3
 
     def reorg_layer(self, feature_map, anchors):
-        '''
+        """
         feature_map: a feature_map from [feature_map_1, feature_map_2, feature_map_3] returned
             from `forward` function
         anchors: shape: [3, 2]
-        '''
+        :param feature_map:
+        :param anchors:
+        :return:
+        """
         # NOTE: size in [h, w] format! don't get messed up!
         grid_size = feature_map.get_shape().as_list()[1:3] if self.use_static_shape else tf.shape(feature_map)[1:3]  # [13, 13]
         # the downscale ratio in height and weight
@@ -140,17 +146,18 @@ class yolov3(object):
         # prob_logits: [N, 13, 13, 3, class_num]
         return x_y_offset, boxes, conf_logits, prob_logits
 
-
     def predict(self, feature_maps):
-        '''
-        Receive the returned feature_maps from `forward` function,
-        the produce the output predictions at the test stage.
-        '''
+        """
+        预测函数，根据前向传播(forward)提取的Feature map进行后续步骤
+        :param feature_maps:
+        :return:
+        """
         feature_map_1, feature_map_2, feature_map_3 = feature_maps
 
         feature_map_anchors = [(feature_map_1, self.anchors[6:9]),
                                (feature_map_2, self.anchors[3:6]),
                                (feature_map_3, self.anchors[0:3])]
+
         reorg_results = [self.reorg_layer(feature_map, anchors) for (feature_map, anchors) in feature_map_anchors]
 
         def _reshape(result):
@@ -192,15 +199,15 @@ class yolov3(object):
         boxes = tf.concat([x_min, y_min, x_max, y_max], axis=-1)
 
         return boxes, confs, probs
-    
+
     def loss_layer(self, feature_map_i, y_true, anchors):
-        '''
-        calc loss function from a certain scale
-        input:
-            feature_map_i: feature maps of a certain scale. shape: [N, 13, 13, 3*(5 + num_class)] etc.
-            y_true: y_ture from a certain scale. shape: [N, 13, 13, 3, 5 + num_class + 1] etc.
-            anchors: shape [9, 2]
-        '''
+        """
+        计算损失函数,训练用 from a certain scale
+        :param feature_map_i:  feature maps of a certain scale. shape: [N, 13, 13, 3*(5 + num_class)] etc.
+        :param y_true: y_ture from a certain scale. shape: [N, 13, 13, 3, 5 + num_class + 1] etc.
+        :param anchors: shape [9, 2]
+        :return:
+        """
         
         # size in [h, w] format! don't get messed up!
         grid_size = tf.shape(feature_map_i)[1:3]
@@ -308,11 +315,12 @@ class yolov3(object):
         return xy_loss, wh_loss, conf_loss, class_loss
 
     def box_iou(self, pred_boxes, valid_true_boxes):
-        '''
-        param:
-            pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
-            valid_true: [V, 4]
-        '''
+        """
+        计算交并比
+        :param pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
+        :param valid_true_boxes: [V, 4]
+        :return:
+        """
 
         # [13, 13, 3, 2]
         pred_box_xy = pred_boxes[..., 0:2]
@@ -349,16 +357,11 @@ class yolov3(object):
     
     def compute_loss(self, y_pred, y_true):
         """
-
-        :param y_pred:
-        :param y_true:
+        计算损失
+        :param y_pred: returned feature_map list by `forward` function: [feature_map_1, feature_map_2, feature_map_3]
+        :param y_true: input y_true by the tf.data pipeline
         :return:
         """
-        '''
-        param:
-            y_pred: returned feature_map list by `forward` function: [feature_map_1, feature_map_2, feature_map_3]
-            y_true: input y_true by the tf.data pipeline
-        '''
         loss_xy, loss_wh, loss_conf, loss_class = 0., 0., 0., 0.
         anchor_group = [self.anchors[6:9], self.anchors[3:6], self.anchors[0:3]]
 

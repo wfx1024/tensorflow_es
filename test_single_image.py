@@ -57,6 +57,7 @@ def main(args):
     cv2.waitKey(0)
 
 
+# python test_single_image.py ./data/demo_data/kite.jpg
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YOLO_v3 单图测试文件")
     parser.add_argument("input_image", type=str, help="图片路径")
