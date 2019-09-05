@@ -1,17 +1,16 @@
 # coding=utf-8
-# for better understanding about yolov3 architecture, refer to this website (in Chinese):
-# https://blog.csdn.net/leviopku/article/details/82660381
-
 from __future__ import division, print_function
-
-import tensorflow as tf
-slim = tf.contrib.slim
-
 from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer
+import tensorflow as tf
+
+slim = tf.contrib.slim
 
 
 class yolov3(object):
-    def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
+    def __init__(
+            self, class_num, anchors, use_label_smooth=False, use_focal_loss=False,
+            batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
+
         self.class_num = class_num  # 类别数量
         self.anchors = anchors  # anchor boxes
         self.batch_norm_decay = batch_norm_decay  # BN衰减系数
@@ -145,34 +144,27 @@ class yolov3(object):
         # 转换anchor数据符合feature map, 注意顺序,
         rescaled_anchors = [(anchor[0] / ratio[1], anchor[1] / ratio[0]) for anchor in anchors]
 
-        # 3个feature map channel都是255,.
-        # 3*(1+4+4*20)=255, 含义为3个anchor boxes, 4个pre_boxes, 1个置信度confidence, 和类别20×4
-        # 将feture转为shape=[?, grid_h, grid_w, 3, (5+20)]
+        # 3个feature map channel都是255.
+        # 3*(1+4+4*20)=255, 含义为3个anchor boxes, 4个pre_boxes, 1个置信度confidence, 和80个类别的概率
+        # 将feture(1,13,13,255)转为shape=[?, grid_h, grid_w, 3, (5+80)]=(1,13,13,3,85)
         feature_map = tf.reshape(feature_map, [-1, grid_size[0], grid_size[1], 3, 5 + self.class_num])
-        # 将其分割
+        # 将其在最后一维分割成4个tensor, 2个[?, grid_h, grid_w, 3, 2], [?, grid_h, grid_w, 3, 1], [?, grid_h, grid_w, 3, 20]
+        # 分别是(1,13,13,3,2)(1,13,13,3,2)(1,13,13,3,1)(1,13,13,3,80)
         box_centers, box_sizes, conf_logits, prob_logits = tf.split(feature_map, [2, 2, 1, self.class_num], axis=-1)
+        # logistic预测的, 所以sigmoid激活
         box_centers = tf.nn.sigmoid(box_centers)
 
-        # split the feature_map along the last dimension
-        # shape info: take 416x416 input image and the 13*13 feature_map for example:
-        # box_centers: [N, 13, 13, 3, 2] last_dimension: [center_x, center_y]
-        # box_sizes: [N, 13, 13, 3, 2] last_dimension: [width, height]
-        # conf_logits: [N, 13, 13, 3, 1]
-        # prob_logits: [N, 13, 13, 3, class_num]
-
-        # use some broadcast tricks to get the mesh coordinates
-        grid_x = tf.range(grid_size[1], dtype=tf.int32)
+        # 通过一些广播技巧，获得网格的坐标
+        grid_x = tf.range(grid_size[1], dtype=tf.int32)  # 0-13
         grid_y = tf.range(grid_size[0], dtype=tf.int32)
-        grid_x, grid_y = tf.meshgrid(grid_x, grid_y)
-        x_offset = tf.reshape(grid_x, (-1, 1))
-        y_offset = tf.reshape(grid_y, (-1, 1))
-        x_y_offset = tf.concat([x_offset, y_offset], axis=-1)
-        # shape: [13, 13, 1, 2]
-        x_y_offset = tf.cast(tf.reshape(x_y_offset, [grid_size[0], grid_size[1], 1, 2]), tf.float32)
+        grid_x, grid_y = tf.meshgrid(grid_x, grid_y)  # 两个13*13的tensor,grid_x每行0-13, grid_y每列0-13
+        x_offset = tf.reshape(grid_x, (-1, 1))  # 169*1
+        y_offset = tf.reshape(grid_y, (-1, 1))  # 169*1
+        x_y_offset = tf.concat([x_offset, y_offset], axis=-1)  # 169*2
+        x_y_offset = tf.cast(tf.reshape(x_y_offset, [grid_size[0], grid_size[1], 1, 2]), tf.float32)  # shape:[13, 13, 1, 2]
 
-        # get the absolute box coordinates on the feature_map
+        # 获得框在feature map上的绝对坐标, 转换为原图坐标
         box_centers = box_centers + x_y_offset
-        # rescale to the original image scale
         box_centers = box_centers * ratio[::-1]
 
         # avoid getting possible nan value with tf.clip_by_value

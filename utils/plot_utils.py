@@ -27,7 +27,7 @@ def plot_one_box(img, coord, label=None, color=None, line_thickness=None):
     :param coord: [x_min, y_min, x_max, y_max] 格式化坐标
     :param label: 标签名
     :param color: 颜色index
-    :param line_thickness: int. rectangle line thickness.
+    :param line_thickness: int. 框厚度.
     :return:
     """
     tl = line_thickness or int(round(0.002 * max(img.shape[0:2])))  # line thickness

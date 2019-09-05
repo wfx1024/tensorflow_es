@@ -1,8 +1,6 @@
 # coding: utf-8
 
 from __future__ import division, print_function
-
-import numpy as np
 import tensorflow as tf
 slim = tf.contrib.slim
 
@@ -93,7 +91,7 @@ def yolo_block(inputs, filters, class_num):
 
 def upsample_layer(inputs, out_shape):
     """
-    使用邻值插入上采样
+    上采样：使用邻值插入
     :param inputs:
     :param out_shape:
     :return:

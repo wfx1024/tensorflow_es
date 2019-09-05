@@ -60,7 +60,7 @@ def main(new_size, classes, anchors, restore_path, letterbox_resize):
 
         for i in range(len(boxes_)):
             x0, y0, x1, y1 = boxes_[i]
-            plot_one_box(img_ori, [x0, y0, x1, y1], label=classes[labels_[i]] + ', {:.2f}%'.format(scores_[i] * 100), line_thickness=1, color=color_table[labels_[i]])
+            plot_one_box(img_ori, [x0, y0, x1, y1], label=classes[labels_[i]] + ', {:.2f}%'.format(scores_[i] * 100), line_thickness=3, color=color_table[labels_[i]])
         cv2.imshow('Detection result', img_ori)
         cv2.imwrite('detection_result.jpg', img_ori)
     cv2.waitKey(0)
@@ -85,7 +85,7 @@ def parse_input():
 # python single_image.py ./data/demo_data/kite.jpg
 if __name__ == '__main__':
     anchors_path = './data/yolo_anchors.txt'  # k-means 得到的anchor box
-    input_image = './data/demo_data/kite.jpg'  # 输入图片
+    input_image = './data/demo_data/me.png'  # 输入图片
     classes = read_class_names('./data/coco.names')  # 类别文件
     restore_path = './data/darknet_weights/yolov3.ckpt'  # 权重文件
     num_class = len(classes)  # 类别数量
