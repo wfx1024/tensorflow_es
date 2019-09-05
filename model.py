@@ -22,6 +22,7 @@ class yolov3(object):
         # use_static_shape=True使用tensor.get_shape(),否则使用tf.shape(tensor)
         # 固定大小会快一点
         self.use_static_shape = use_static_shape
+        self.freeze_body = True  # 冻结，切换至 Darknet-19
 
     def forward(self, inputs, is_training=False, reuse=False):
         """
@@ -132,20 +133,25 @@ class yolov3(object):
     def reorg_layer(self, feature_map, anchors):
         """
         转移层，特征融合(Fine-Grained Features)，把高分辨率的浅层特征连接到低分辨率的生成特征，堆积在不同channel上。
-        :param feature_map: 不同尺度的 feature map，(13*13*255) (26*26*255) (52*52*255)
+        :param feature_map: 不同尺度的 feature map，
         :param anchors: 3个anchor，shape=3,2
         :return:
         """
-        # 格式为[height, width]，切忌弄错，三目运算，选用tf.shape()和tensor.get_shape(),前者快一点点
-        # 得到格子划分
+        # 选用tf.shape()和tensor.get_shape(),得到grid划分(前者快一点点)
+        # 格式为[h, w], 格子划分13*13，,26*26, 52*52
         grid_size = feature_map.get_shape().as_list()[1:3] if self.use_static_shape else tf.shape(feature_map)[1:3]
-        # the downscale ratio in height and weight
+        # 每个cell的大小，转成float32, [w, h]
         ratio = tf.cast(self.img_size / grid_size, tf.float32)
-        # rescale the anchors to the feature_map
-        # NOTE: the anchor is in [w, h] format!
+        # 转换anchor数据符合feature map, 注意顺序,
         rescaled_anchors = [(anchor[0] / ratio[1], anchor[1] / ratio[0]) for anchor in anchors]
 
+        # 3个feature map channel都是255,.
+        # 3*(1+4+4*20)=255, 含义为3个anchor boxes, 4个pre_boxes, 1个置信度confidence, 和类别20×4
+        # 将feture转为shape=[?, grid_h, grid_w, 3, (5+20)]
         feature_map = tf.reshape(feature_map, [-1, grid_size[0], grid_size[1], 3, 5 + self.class_num])
+        # 将其分割
+        box_centers, box_sizes, conf_logits, prob_logits = tf.split(feature_map, [2, 2, 1, self.class_num], axis=-1)
+        box_centers = tf.nn.sigmoid(box_centers)
 
         # split the feature_map along the last dimension
         # shape info: take 416x416 input image and the 13*13 feature_map for example:
@@ -153,8 +159,6 @@ class yolov3(object):
         # box_sizes: [N, 13, 13, 3, 2] last_dimension: [width, height]
         # conf_logits: [N, 13, 13, 3, 1]
         # prob_logits: [N, 13, 13, 3, class_num]
-        box_centers, box_sizes, conf_logits, prob_logits = tf.split(feature_map, [2, 2, 1, self.class_num], axis=-1)
-        box_centers = tf.nn.sigmoid(box_centers)
 
         # use some broadcast tricks to get the mesh coordinates
         grid_x = tf.range(grid_size[1], dtype=tf.int32)
