@@ -20,6 +20,9 @@ from model import yolov3
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S', filename=args.progress_log_path, filemode='w')
 
+# 数据集txt文件格式，一行一图
+# line_index, img_path, img_width, img_height, [box_info_1 (5 number)],....
+
 
 def train_data_set():
     """

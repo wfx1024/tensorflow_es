@@ -10,11 +10,16 @@ import cv2
 
 
 def mix_up(img1, img2, bbox1, bbox2):
-    '''
-    return:
+    """
+    融合
+    :param img1:
+    :param img2:
+    :param bbox1:
+    :param bbox2:
+    :return:
         mix_img: HWC format mix up image
         mix_bbox: [N, 5] shape mix up bbox, i.e. `x_min, y_min, x_max, y_mix, mixup_weight`.
-    '''
+    """
     height = max(img1.shape[0], img2.shape[0])
     width = max(img1.shape[1], img2.shape[1])
 
@@ -89,6 +94,7 @@ def bbox_crop(bbox, crop_box=None, allow_outside_center=True):
     mask = np.logical_and(mask, (bbox[:, :2] < bbox[:, 2:4]).all(axis=1))
     bbox = bbox[mask]
     return bbox
+
 
 def bbox_iou(bbox_a, bbox_b, offset=0):
     """Calculate Intersection-Over-Union(IOU) of two bounding boxes.
@@ -299,9 +305,16 @@ def letterbox_resize(img, new_width, new_height, interp=0):
 
 
 def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False):
-    '''
-    Resize the image and correct the bbox accordingly.
-    '''
+    """
+     Resize the image and correct the bbox accordingly.
+    :param img:
+    :param bbox:
+    :param new_width:
+    :param new_height:
+    :param interp:
+    :param letterbox:
+    :return:
+    """
 
     if letterbox:
         image_padded, resize_ratio, dw, dh = letterbox_resize(img, new_width, new_height, interp)
@@ -326,14 +339,14 @@ def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False
 
 
 def random_flip(img, bbox, px=0, py=0):
-    '''
+    """
     Randomly flip the image and correct the bbox.
-    param:
-    px:
-        the probability of horizontal flip
-    py:
-        the probability of vertical flip
-    '''
+    :param img:
+    :param bbox:
+    :param px:the probability of horizontal flip
+    :param py:the probability of vertical flip
+    :return:
+    """
     height, width = img.shape[:2]
     if np.random.uniform(0, 1) < px:
         img = cv2.flip(img, 1)
@@ -352,17 +365,16 @@ def random_flip(img, bbox, px=0, py=0):
 
 
 def random_expand(img, bbox, max_ratio=4, fill=0, keep_ratio=True):
-    '''
+    """
     Random expand original image with borders, this is identical to placing
     the original image on a larger canvas.
-    param:
-    max_ratio :
-        Maximum ratio of the output image on both direction(vertical and horizontal)
-    fill :
-        The value(s) for padded borders.
-    keep_ratio : bool
-        If `True`, will keep output image the same aspect ratio as input.
-    '''
+    :param img:
+    :param bbox:
+    :param max_ratio: Maximum ratio of the output image on both direction(vertical and horizontal)
+    :param fill:The value(s) for padded borders.
+    :param keep_ratio: bool, If `True`, will keep output image the same aspect ratio as input.
+    :return:
+    """
     h, w, c = img.shape
     ratio_x = random.uniform(1, max_ratio)
     if keep_ratio:

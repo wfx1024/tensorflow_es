@@ -10,8 +10,8 @@ import math
 
 
 # Some paths
-train_file = './data/my_data/train.txt'  # 训练样本列表txt路径
-val_file = './data/my_data/val.txt'  # 验证样本列表txt路径
+train_file = './data/sample/train.txt'  # 训练样本列表txt路径
+val_file = './data/sample/val.txt'  # 验证样本列表txt路径
 restore_path = './data/darknet_weights/yolov3.ckpt'  # 权重文件
 save_dir = './checkpoint/'  # 权重保存路径
 log_dir = './data/logs/'  # log文件储存路径

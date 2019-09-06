@@ -21,17 +21,31 @@ def test_dim_size():
 
 
 def test_tf_data():
-    dataset1 = tf.data.Dataset.from_tensor_slices(tf.random_uniform([4, 10]))
-    dataset2 = tf.data.Dataset.from_tensor_slices((
-        tf.random_uniform([4]),
-        tf.random_uniform([4, 100], maxval=100, dtype=tf.int32)
-    ))
-    dataset3 = tf.data.Dataset.zip((dataset1, dataset2))
-    dataset = tf.data.Dataset.from_tensor_slices({
-        "a": tf.random_uniform([4]),
-        "b": tf.random_uniform([4, 100], maxval=100, dtype=tf.int32)
-    })
-    print(dataset1)
+    """
+       验证数据
+       :return:
+       """
+    import args
+    from utils.data_utils import get_batch_data
+    train_dataset = tf.data.TextLineDataset(args.train_file)
+    train_dataset = train_dataset.shuffle(args.train_img_cnt)  # 先随机重排
+    train_dataset = train_dataset.batch(args.batch_size)  # 分批
+    train_dataset = train_dataset.map(
+        lambda x: tf.py_func(
+            get_batch_data,
+            inp=[x, args.class_num, args.img_size, args.anchors, 'train',
+                 args.multi_scale_train, args.use_mix_up, args.letterbox_resize],
+            Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
+        num_parallel_calls=args.num_threads
+    )
+    # train_dataset = train_dataset.prefetch(args.prefetech_buffer)  # 每次取5
+    iterator = train_dataset.make_one_shot_iterator()  # 构建迭代器，自动初始化
+    next_element = iterator.get_next()  # 获取下一个元素op
+    with tf.Session() as sess:
+        for i in range(12):  # 获取每一个元素
+            value = sess.run(next_element)
+            print(i, "--->", value)
+    return train_dataset
 
 
 
