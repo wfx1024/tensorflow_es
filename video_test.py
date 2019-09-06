@@ -13,7 +13,7 @@ from utils.nms_utils import gpu_nms
 from utils.plot_utils import get_color_table, plot_one_box
 from utils.data_aug import letterbox_resize
 
-from model import yolov3
+from model import YoloV3
 
 parser = argparse.ArgumentParser(description="YOLO-V3 video test procedure.")
 parser.add_argument("input_video", type=str,
@@ -50,7 +50,7 @@ if args.save_video:
 
 with tf.Session() as sess:
     input_data = tf.placeholder(tf.float32, [1, args.new_size[1], args.new_size[0], 3], name='input_data')
-    yolo_model = yolov3(args.num_class, args.anchors)
+    yolo_model = YoloV3(args.num_class, args.anchors)
     with tf.variable_scope('yolov3'):
         pred_feature_maps = yolo_model.forward(input_data, False)
     pred_boxes, pred_confs, pred_probs = yolo_model.predict(pred_feature_maps)
@@ -84,7 +84,6 @@ with tf.Session() as sess:
         else:
             boxes_[:, [0, 2]] *= (width_ori/float(args.new_size[0]))
             boxes_[:, [1, 3]] *= (height_ori/float(args.new_size[1]))
-
 
         for i in range(len(boxes_)):
             x0, y0, x1, y1 = boxes_[i]
