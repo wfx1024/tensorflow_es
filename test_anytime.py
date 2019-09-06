@@ -18,3 +18,20 @@ def test_dim_size():
         print("\nkernel2----->\n", kernel2.eval())
         print("\n----->\n", out1.eval())
         print("\n----->\n", out2.eval())
+
+
+def test_tf_data():
+    dataset1 = tf.data.Dataset.from_tensor_slices(tf.random_uniform([4, 10]))
+    dataset2 = tf.data.Dataset.from_tensor_slices((
+        tf.random_uniform([4]),
+        tf.random_uniform([4, 100], maxval=100, dtype=tf.int32)
+    ))
+    dataset3 = tf.data.Dataset.zip((dataset1, dataset2))
+    dataset = tf.data.Dataset.from_tensor_slices({
+        "a": tf.random_uniform([4]),
+        "b": tf.random_uniform([4, 100], maxval=100, dtype=tf.int32)
+    })
+    print(dataset1)
+
+
+

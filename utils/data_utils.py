@@ -1,9 +1,6 @@
 # coding: utf-8
 
 from __future__ import division, print_function
-
-import numpy as np
-import cv2
 import sys
 from utils.data_aug import *
 import random
@@ -13,18 +10,18 @@ iter_cnt = 0
 
 
 def parse_line(line):
-    '''
+    """
     Given a line from the training/test txt file, return parsed info.
     line format: line_index, img_path, img_width, img_height, [box_info_1 (5 number)], ...
-    return:
-        line_idx: int64
+    :param line: int64
+    :return:line_idx:
         pic_path: string.
         boxes: shape [N, 4], N is the ground truth count, elements in the second
             dimension are [x_min, y_min, x_max, y_max]
         labels: shape [N]. class index.
         img_width: int.
         img_height: int
-    '''
+    """
     if 'str' not in str(type(line)):
         line = line.decode()
     s = line.strip().split(' ')
@@ -49,14 +46,15 @@ def parse_line(line):
 
 
 def process_box(boxes, labels, img_size, class_num, anchors):
-    '''
+    """
     Generate the y_true label, i.e. the ground truth feature_maps in 3 different scales.
-    params:
-        boxes: [N, 5] shape, float32 dtype. `x_min, y_min, x_max, y_mix, mixup_weight`.
-        labels: [N] shape, int64 dtype.
-        class_num: int64 num.
-        anchors: [9, 4] shape, float32 dtype.
-    '''
+    :param boxes: [N, 5] shape, float32 dtype. `x_min, y_min, x_max, y_mix, mixup_weight`.
+    :param labels: [N] shape, int64 dtype.
+    :param img_size:
+    :param class_num: int64 num.
+    :param anchors: [9, 4] shape, float32 dtype.
+    :return:
+    """
     anchors_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
 
     # convert boxes form:
@@ -116,15 +114,16 @@ def process_box(boxes, labels, img_size, class_num, anchors):
 
 
 def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
-    '''
-    param:
-        line: a line from the training/test txt file
-        class_num: totol class nums.
-        img_size: the size of image to be resized to. [width, height] format.
-        anchors: anchors.
-        mode: 'train' or 'val'. When set to 'train', data_augmentation will be applied.
-        letterbox_resize: whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
-    '''
+    """
+    解析数据
+    :param line: a line from the training/test txt file
+    :param class_num: totol class nums.
+    :param img_size:  the size of image to be resized to. [width, height] format.
+    :param anchors: anchors.
+    :param mode: 'train' or 'val'. When set to 'train', data_augmentation will be applied.
+    :param letterbox_resize:  whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
+    :return:
+    """
     if not isinstance(line, list):
         img_idx, pic_path, boxes, labels, _, _ = parse_line(line)
         img = cv2.imread(pic_path)
@@ -177,18 +176,19 @@ def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
 
 
 def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False, letterbox_resize=True, interval=10):
-    '''
-    generate a batch of imgs and labels
-    param:
-        batch_line: a batch of lines from train/val.txt files
-        class_num: num of total classes.
-        img_size: the image size to be resized to. format: [width, height].
-        anchors: anchors. shape: [9, 2].
-        mode: 'train' or 'val'. if set to 'train', data augmentation will be applied.
-        multi_scale: whether to use multi_scale training, img_size varies from [320, 320] to [640, 640] by default. Note that it will take effect only when mode is set to 'train'.
-        letterbox_resize: whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
-        interval: change the scale of image every interval batches. Note that it's indeterministic because of the multi threading.
-    '''
+    """
+    获得批数据(imgs和labels)
+    :param batch_line: a batch of lines from train/val.txt files
+    :param class_num: num of total classes.
+    :param img_size: the image size to be resized to. format: [width, height].
+    :param anchors: anchors. shape: [9, 2].
+    :param mode: 'train' or 'val'. if set to 'train', data augmentation will be applied.
+    :param multi_scale: whether to use multi_scale training, img_size varies from [320, 320] to [640, 640] by default. Note that it will take effect only when mode is set to 'train'.
+    :param mix_up:
+    :param letterbox_resize:  whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
+    :param interval: change the scale of image every interval batches. Note that it's indeterministic because of the multi threading.
+    :return:
+    """
     global iter_cnt
     # multi_scale training
     if multi_scale and mode == 'train':
