@@ -16,7 +16,7 @@ from utils.data_aug import letterbox_resize
 from model import YoloV3
 
 parser = argparse.ArgumentParser(description="YOLO-V3 video test procedure.")
-parser.add_argument("input_video", type=str,
+parser.add_argument("--input_video", type=str, default="./data/demo_data/1.mp4",
                     help="The path of the input video.")
 parser.add_argument("--anchor_path", type=str, default="./data/yolo_anchors.txt",
                     help="The path of the anchor txt file.")
