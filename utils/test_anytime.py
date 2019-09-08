@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 import tensorflow as tf
+import random
 
 
 def test_dim_size():
@@ -48,4 +49,12 @@ def test_tf_data():
     return train_dataset
 
 
-
+def test_color():
+    random.seed(2)
+    color_table = {}
+    for i in range(20):
+        rgb = [0, 0, 0]
+        while rgb[0] < 100 and rgb[1] < 100 and rgb[2] < 100:
+            rgb = [random.randint(0, 255) for _ in range(3)]
+        color_table[i] = rgb
+    print(color_table)

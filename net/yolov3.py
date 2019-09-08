@@ -72,17 +72,13 @@ class YoloV3:
         预测函数，根据前向传播(forward)提取的Feature map进行后续步骤
         :return:
         """
-        feature_map_anchors = [
-            (self.feature_map_1, self.anchors[6:9]),  # (116,90),  (156,198),  (373,326)
-            (self.feature_map_2, self.anchors[3:6]),  # (30,61), (62,45), (59,119),
-            (self.feature_map_3, self.anchors[0:3])  # (10,13), (16,30), (33,23),
-        ]  # 针对不同grid使用不同大小的anchor
-
-        # 对每种尺度进行特征融合
-        reorg_results = [self.reorg_layer(feature_map, anchors) for (feature_map, anchors) in feature_map_anchors]
-
-        def _reshape(result):
-            x_y_offset, boxes, conf_logits, prob_logits = result
+        def _reshape(each_result):
+            """
+            每种尺度改变形状
+            :param each_result:
+            :return:
+            """
+            x_y_offset, boxes, conf_logits, prob_logits = each_result
             grid_size = x_y_offset.get_shape().as_list()[:2] if self.use_static_shape else tf.shape(x_y_offset)[:2]
             boxes = tf.reshape(boxes, [-1, grid_size[0] * grid_size[1] * 3, 4])
             conf_logits = tf.reshape(conf_logits, [-1, grid_size[0] * grid_size[1] * 3, 1])
@@ -93,6 +89,15 @@ class YoloV3:
             # prob_logits: [N, 13*13*3, class_num]
             return boxes, conf_logits, prob_logits
 
+        feature_map_anchors = [
+            (self.feature_map_1, self.anchors[6:9]),  # (116,90), (156,198), (373,326)
+            (self.feature_map_2, self.anchors[3:6]),  # (30,61), (62,45), (59,119),
+            (self.feature_map_3, self.anchors[0:3])  # (10,13), (16,30), (33,23),
+        ]  # 针对不同grid使用不同大小的anchor
+
+        # 对每种尺度进行特征融合
+        reorg_results = [self.reorg_layer(feature_map, anchors) for (feature_map, anchors) in feature_map_anchors]
+
         boxes_list, confs_list, probs_list = [], [], []
         for result in reorg_results:
             boxes, conf_logits, prob_logits = _reshape(result)
@@ -102,13 +107,12 @@ class YoloV3:
             confs_list.append(confs)
             probs_list.append(probs)
         
-        # collect results on three scales
-        # take 416*416 input image for example:
-        # shape: [N, (13*13+26*26+52*52)*3, 4]
+        # 三种尺度的结果, 416*416 举例
+        # [N, (13*13+26*26+52*52)*3, 4]
         boxes = tf.concat(boxes_list, axis=1)
-        # shape: [N, (13*13+26*26+52*52)*3, 1]
+        # [N, (13*13+26*26+52*52)*3, 1]
         confs = tf.concat(confs_list, axis=1)
-        # shape: [N, (13*13+26*26+52*52)*3, class_num]
+        # [N, (13*13+26*26+52*52)*3, class_num]
         probs = tf.concat(probs_list, axis=1)
 
         center_x, center_y, width, height = tf.split(boxes, [1, 1, 1, 1], axis=-1)
@@ -176,7 +180,6 @@ class YoloV3:
         # last dimension: (center_x, center_y, w, h)
         boxes = tf.concat([box_centers, box_sizes], axis=-1)
 
-        # shape:
         # x_y_offset: [13, 13, 1, 2]
         # boxes: [N, 13, 13, 3, 4], rescaled to the original image scale
         # conf_logits: [N, 13, 13, 3, 1]
