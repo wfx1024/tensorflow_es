@@ -50,7 +50,7 @@ def conv2d(inputs, filters, kernel_size, strides=1):
         inputs, filters, kernel_size, stride=strides,
         padding=('SAME' if strides == 1 else 'VALID')
     )
-    log = log + "conv--(kernel_size:%d*%d kernel_num:%d stride:%d " % (kernel_size,  kernel_size, filters, strides)
+    log = log + "conv--(name: %s kernel_size:%d*%d kernel_num:%d stride:%d " % (inputs.name, kernel_size,  kernel_size, filters, strides)
     log = log + "input:%d*%d*%d " % (inputs.shape[1], inputs.shape[2], inputs.shape[3])
     log = log + "out:%d*%d*%d " % (out.shape[1], out.shape[2], inputs.shape[3])
     print(log)

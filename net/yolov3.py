@@ -257,10 +257,10 @@ class YoloV3:
 
     def loss_layer(self, feature_map_i, y_true, anchors):
         """
-        计算损失函数,训练用 from a certain scale
-        :param feature_map_i:  feature maps of a certain scale. shape: [N, 13, 13, 3*(5 + num_class)] etc.
-        :param y_true: y_ture from a certain scale. shape: [N, 13, 13, 3, 5 + num_class + 1] etc.
-        :param anchors: shape [9, 2]
+        计算损失函数
+        :param feature_map_i:  feature maps [N, 13, 13, 3*(5 + num_class)]
+        :param y_true: y_ture [N, 13, 13, 3, 5 + num_class + 1]
+        :param anchors: [3, 2]
         :return:
         """
         grid_size = tf.shape(feature_map_i)[1:3]  # 尺寸[h, w]
@@ -278,7 +278,7 @@ class YoloV3:
         # the calculation of ignore mask if referred from
         ignore_mask = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
 
-        def loop_cond(idx):
+        def loop_cond(idx, ignore_mask):
             return tf.less(idx, tf.cast(N, tf.int32))
 
         def loop_body(idx, ignore_mask):
