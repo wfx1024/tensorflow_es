@@ -52,17 +52,18 @@ class YoloV3:
         self.best_mAP = - np.Inf  # mAP先设为infinite
         self._build_networks()  # 构建网络
         self._feature_map_to_bboxes()  # 将feature map转换为bboxes信息。
-        if is_training:
-            self.compute_loss()
-            self._optimizer()
+
         self.pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
         self.pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
-        self.y_true = tf.placeholder(tf.float32, [])
         self.sess = tf.Session()
         self.sess.run(tf.initialize_all_variables())
         self.saver = tf.train.Saver()
         self.saver.restore(self.sess, setting.weights_path)
         self.writer = tf.summary.FileWriter(train_setting.log_dir, self.sess.graph)
+        if is_training:
+            self._compute_loss()
+            self._optimizer()
+        self.merged = tf.summary.merge_all()
 
     def _build_networks(self):
         """
@@ -120,7 +121,7 @@ class YoloV3:
         ]  # 针对不同grid使用不同大小的anchor
 
         # 对每种尺度进行特征融合
-        reorg_results = [self.reorg_layer(feature_map_i, anchors) for (feature_map_i, anchors) in feature_map_anchors]
+        reorg_results = [self._reorg_layer(feature_map_i, anchors) for (feature_map_i, anchors) in feature_map_anchors]
 
         boxes_list, confs_list, probs_list = [], [], []
         for result in reorg_results:
@@ -135,16 +136,21 @@ class YoloV3:
         # [N, (13*13+26*26+52*52)*3, 4]
         boxes = tf.concat(boxes_list, axis=1)
         # [N, (13*13+26*26+52*52)*3, 1]
-        self.confs = tf.concat(confs_list, axis=1)
+        confs = tf.concat(confs_list, axis=1)
         # [N, (13*13+26*26+52*52)*3, class_num]
-        self.probs = tf.concat(probs_list, axis=1)
+        probs = tf.concat(probs_list, axis=1)
 
         center_x, center_y, width, height = tf.split(boxes, [1, 1, 1, 1], axis=-1)
         x_min = center_x - width / 2
         y_min = center_y - height / 2
         x_max = center_x + width / 2
         y_max = center_y + height / 2
-        self.boxes = tf.concat([x_min, y_min, x_max, y_max], axis=-1)
+        boxes = tf.concat([x_min, y_min, x_max, y_max], axis=-1)
+        pred_scores = confs * probs
+        self.boxes, self.scores, self.labels = gpu_nms(
+            boxes, pred_scores, setting.class_num, max_boxes=setting.max_boxes,
+            score_thresh=self.score_threshold, nms_thresh=setting.nms_threshold
+        )
 
     def predict(self, img_origin):
         """
@@ -152,16 +158,11 @@ class YoloV3:
         :param img_origin:
         :return:
         """
-        pred_scores = self.confs * self.probs
-        boxes, scores, labels = gpu_nms(
-            self.boxes, pred_scores, setting.class_num, max_boxes=setting.max_boxes,
-            score_thresh=self.score_threshold, nms_thresh=setting.nms_threshold
-        )
-        boxes_, scores_, labels_ = self.sess.run([boxes, scores, labels], feed_dict={self.input_data: img_origin})
-        self.y_pred = boxes_, scores_, labels_
-        return boxes_, scores_, labels_
 
-    def reorg_layer(self, feature_map_i, anchors):
+        boxes, scores, labels = self.sess.run([self.boxes, self.scores, self.labels], feed_dict={self.input_data: img_origin})
+        return boxes, scores, labels
+
+    def _reorg_layer(self, feature_map_i, anchors):
         """
         转移层，特征融合(Fine-Grained Features)，把高分辨率的浅层特征连接到低分辨率的生成特征，堆积在不同channel上。
         :param feature_map_i: 不同尺度的 feature map，
@@ -215,7 +216,7 @@ class YoloV3:
         # prob_logits: [N, 13, 13, 3, class_num]
         return x_y_offset, boxes, conf_logits, prob_logits
 
-    def box_iou(self, pred_boxes, valid_true_boxes):
+    def _box_iou(self, pred_boxes, valid_true_boxes):
         """
         计算交并比
         :param pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
@@ -255,7 +256,7 @@ class YoloV3:
         iou = intersect_area / (pred_box_area + true_box_area - intersect_area + 1e-10)
         return iou
 
-    def loss_layer(self, feature_map_i, y_true, anchors):
+    def _loss_layer(self, feature_map_i, y_true, anchors):
         """
         计算损失函数
         :param feature_map_i:  feature maps [N, 13, 13, 3*(5 + num_class)]
@@ -266,7 +267,7 @@ class YoloV3:
         grid_size = tf.shape(feature_map_i)[1:3]  # 尺寸[h, w]
         ratio = tf.cast(self.img_size / grid_size, tf.float32)  # 高宽缩放比例
         N = tf.cast(tf.shape(feature_map_i)[0], tf.float32)  # batch_size
-        x_y_offset, pred_boxes, pred_conf_logits, pred_prob_logits = self.reorg_layer(feature_map_i, anchors)
+        x_y_offset, pred_boxes, pred_conf_logits, pred_prob_logits = self._reorg_layer(feature_map_i, anchors)
 
         ###########
         # get mask
@@ -286,7 +287,7 @@ class YoloV3:
             # V: num of true gt box of each image in a batch
             valid_true_boxes = tf.boolean_mask(y_true[idx, ..., 0:4], tf.cast(object_mask[idx, ..., 0], 'bool'))
             # shape: [13, 13, 3, 4] & [V, 4] ==> [13, 13, 3, V]
-            iou = self.box_iou(pred_boxes[idx], valid_true_boxes)
+            iou = self._box_iou(pred_boxes[idx], valid_true_boxes)
             # shape: [13, 13, 3]
             best_iou = tf.reduce_max(iou, axis=-1)
             # shape: [13, 13, 3]
@@ -364,7 +365,7 @@ class YoloV3:
 
         return xy_loss, wh_loss, conf_loss, class_loss
 
-    def compute_loss(self):
+    def _compute_loss(self):
         """
         计算损失
         :return:
@@ -375,7 +376,7 @@ class YoloV3:
 
         # 计算3种维度的5种损失
         for i in range(len(feature_map)):
-            result = self.loss_layer(feature_map[i], self.y_true[i], anchor_group[i])
+            result = self._loss_layer(feature_map[i], self.y_true[i], anchor_group[i])
             loss_xy += result[0]
             loss_wh += result[1]
             loss_conf += result[2]
@@ -435,15 +436,14 @@ class YoloV3:
         :return:
         """
         # 保存各种参数
-        saver_to_restore = tf.train.Saver(
-            var_list=tf.contrib.framework.get_variables_to_restore(
-                include=train_setting.restore_include, exclude=train_setting.restore_exclude
-            )
-        )
-        self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
-        saver_to_restore.restore(self.sess, setting.weights_path)  # 加载权重
-        merged = tf.summary.merge_all()
-
+        # self.saver
+        # saver_to_restore = tf.train.Saver(
+        #     var_list=tf.contrib.framework.get_variables_to_restore(
+        #         include=train_setting.restore_include, exclude=train_setting.restore_exclude
+        #     )
+        # )
+        # self.sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+        # saver_to_restore.restore(self.sess, setting.weights_path)  # 加载权重
         print('\n----------- start to train -----------\n')
         for epoch in range(train_setting.total_epoches):  # 训练100epoch
             self.sess.run(self.train_init_op)
@@ -452,8 +452,10 @@ class YoloV3:
                 = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
             for _ in trange(train_setting.train_batch_num):  # batch
+                self.y_pred = self.boxes, self.scores, self.labels
+                self.image = self.sess.run(self.image)
                 _, summary, y_pred, y_true, loss, global_step, learning_rate = self.sess.run(
-                    [self.train_op, merged, self.y_pred, self.y_true, self.loss, self.global_step, self.learning_rate],
+                    [self.train_op, self.merged, self.y_pred, self.y_true, self.loss, self.global_step, self.learning_rate],
                     feed_dict={self.input_data: self.image}
                 )
                 self._evaluate_each_batch(epoch, summary, y_pred, y_true, loss, global_step, learning_rate)
