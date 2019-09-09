@@ -82,3 +82,13 @@ def test_ckpt_variable():
     for key in var_to_shape_map:
         print("tensor_name: ", key)
         # print(reader.get_tensor(key))
+
+
+def test_dataset():
+    from utils.dataset_tricks import create_iterator
+    train_init_op, val_init_op, image_ids, image, y_true = create_iterator()
+
+    with tf.Session() as sess:
+        for _ in range(3):
+            image = sess.run(image)
+            print(image)
