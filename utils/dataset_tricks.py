@@ -128,6 +128,7 @@ def mix_up(img1, img2, bbox1, bbox2):
 
     return mix_img, mix_bbox
 
+
 def bbox_iou(bbox_a, bbox_b, offset=0):
     """Calculate Intersection-Over-Union(IOU) of two bounding boxes.
     Parameters
@@ -157,7 +158,8 @@ def bbox_iou(bbox_a, bbox_b, offset=0):
     area_b = np.prod(bbox_b[:, 2:4] - bbox_b[:, :2] + offset, axis=1)
     return area_i / (area_a[:, None] + area_b - area_i)
 
-def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False):
+
+def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox_resize_used=False):
     """
      Resize the image and correct the bbox accordingly.
     :param img:
@@ -165,11 +167,11 @@ def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False
     :param new_width:
     :param new_height:
     :param interp:
-    :param letterbox:
+    :param letterbox_resize_used:
     :return:
     """
 
-    if letterbox:
+    if letterbox_resize_used:
         image_padded, resize_ratio, dw, dh = letterbox_resize(img, new_width, new_height, interp)
 
         # xmin, xmax
@@ -480,7 +482,7 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     return y_true_13, y_true_26, y_true_52
 
 
-def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
+def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize_used):
     """
     解析每行数据
     :param line: a line from the training/test txt file
@@ -488,7 +490,7 @@ def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
     :param img_size:  the size of image to be resized to. [width, height] format.
     :param anchors: anchors.
     :param mode: 'train' or 'val'. When set to 'train', data_augmentation will be applied.
-    :param letterbox_resize:  whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
+    :param letterbox_resize_used:  whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
     :return:
     """
     if not isinstance(line, list):
@@ -523,13 +525,13 @@ def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
         # resize with random interpolation
         h, w, _ = img.shape
         interp = np.random.randint(0, 5)
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=interp, letterbox=letterbox_resize)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=interp, letterbox_resize_used=letterbox_resize_used)
 
         # random horizontal flip
         h, w, _ = img.shape
         img, boxes = random_flip(img, boxes, px=0.5)
     else:
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1, letterbox=letterbox_resize)
+        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1, letterbox_resize_used=letterbox_resize_used)
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
     img = img / 255.  # v3 必须归一化输入
@@ -539,7 +541,9 @@ def parse_data(line, class_num, img_size, anchors, mode, letterbox_resize):
     return img_idx, img, y_true_13, y_true_26, y_true_52
 
 
-def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False, letterbox_resize=True, interval=10):
+def get_batch_data(
+        batch_line, class_num, img_size, anchors, mode, multi_scale=False,
+        mix_up=False, letterbox_resize_used=True, interval=10):
     """
     获得批数据(imgs和labels)
     :param batch_line: batch数量的line
@@ -549,7 +553,7 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
     :param mode: train或val.如果是train, 应用data augmentation
     :param multi_scale: 是否multi_scale training, 图片大小 32*[10->20]也就是[320, 320]->[640, 640]，mode=train有效
     :param mix_up:
-    :param letterbox_resize: 是否letterbox resize, i.e., keep the original aspect ratio in the resized image.
+    :param letterbox_resize_used: 是否letterbox resize, i.e., keep the original aspect ratio in the resized image.
     :param interval: change the scale of image every interval batches. Note that it's indeterministic because of the multi threading.
     :return:
     """
@@ -577,7 +581,9 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
 
     # 解析每行
     for line in batch_line:
-        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode, letterbox_resize)
+        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(
+            line, class_num, img_size, anchors, mode, letterbox_resize_used
+        )
         img_idx_batch.append(img_idx)
         img_batch.append(img)
         y_true_13_batch.append(y_true_13)
