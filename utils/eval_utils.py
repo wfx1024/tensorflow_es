@@ -1,5 +1,4 @@
 # coding: utf-8
-
 from __future__ import division, print_function
 
 import numpy as np
@@ -8,6 +7,10 @@ from collections import Counter
 
 from utils.nms_utils import cpu_nms, gpu_nms
 from utils.data_utils import parse_line
+
+"""
+各种评估方法
+"""
 
 
 def calc_iou(pred_boxes, true_boxes):
@@ -206,9 +209,11 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
         # pred_confs: [N]
         # pred_labels: [N]
         # N: Detected box number of the current image
-        pred_boxes, pred_confs, pred_labels = sess.run(gpu_nms_op,
-                                                       feed_dict={pred_boxes_flag: pred_boxes,
-                                                                  pred_scores_flag: pred_confs * pred_probs})
+        pred_boxes, pred_confs, pred_labels = sess.run(
+            gpu_nms_op,
+            feed_dict={pred_boxes_flag: pred_boxes,
+                       pred_scores_flag: pred_confs * pred_probs}
+        )
         # len: N
         pred_labels_list = [] if pred_labels is None else pred_labels.tolist()
         if pred_labels_list == []:
@@ -331,8 +336,6 @@ def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
     return gt_dict
 
 
-# The following two functions are modified from FAIR's Detectron repo to calculate mAP:
-# https://github.com/facebookresearch/Detectron/blob/master/detectron/datasets/voc_eval.py
 def voc_ap(rec, prec, use_07_metric=False):
     """Compute VOC AP given precision and recall. If use_07_metric is true, uses
     the VOC 07 11-point method (default:False).

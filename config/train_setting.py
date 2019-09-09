@@ -1,6 +1,5 @@
 # -*- coding:utf-8 -*-
 
-from utils.misc_utils import parse_anchors, read_class_names
 import math
 
 
@@ -9,7 +8,7 @@ import math
 """
 
 """初始化参数"""
-letterbox_resize = True  # 是否缩放
+# letterbox_resize = True  # 是否缩放
 total_epoches = 100  # epoch数
 batch_size = 6  # batch 大小
 """样本相关"""
@@ -26,11 +25,11 @@ progress_log_path = './data/progress.log'  # 训练日志
 
 
 train_evaluation_step = 100  # Evaluate on the training batch after some steps.
-val_evaluation_epoch = 2  # Evaluate on the whole validation dataset after some epochs. Set to None to evaluate every epoch.
-save_epoch = 10  # Save the model after some epochs.
+val_evaluation_epoch = 2  # 在多少epoch后对验证集验证, 设置为None, 则每个epoch验证
+save_epoch = 10  # 训练多少epoch后保存weights
 batch_norm_decay = 0.99  # decay in bn ops
 weight_decay = 5e-4  # l2 weight decay
-global_step = 0  # used when resuming training
+global_step = 0  # 中断训练初始化
 
 # tf.data参数
 num_threads = 10  # tf.data pipeline线程数
@@ -69,3 +68,9 @@ restore_exclude = ['yolov3/yolov3_head/Conv_14', 'yolov3/yolov3_head/Conv_6', 'y
 # Choose the parts you want to finetune. List form.
 # Set to None to train the whole model.
 update_part = ['yolov3/yolov3_head']
+nms_topk = 150  # keep at most nms_topk outputs after nms
+
+multi_scale_train = True  # 是否使用多尺度训练策略. 图片尺度从 [320, 320] 到 [640, 640]
+use_mix_up = True  # 是否使用 mix up data augmentation strategy.
+use_warm_up = True  # 是否使用 warm up strategy to prevent from gradient exploding.
+warm_up_epoch = 3  # Warm up training epoches. Set to a larger value if gradient explodes.

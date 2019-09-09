@@ -11,6 +11,11 @@ class YoloV3(object):
             self, class_num, anchors, use_label_smooth=False, use_focal_loss=False,
             batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
 
+        # predict: 默认
+        # use_label_smooth=False,use_focal_loss=False,batch_norm_decay=0.999,weight_decay=5e-4,use_static_shape=True
+        # train:
+        # use_label_smooth=True,use_focal_loss=True,batch_norm_decay = 0.99,weight_decay = 5e-4,use_static_shape=False
+
         self.class_num = class_num  # 类别数量
         self.anchors = anchors  # anchor boxes
         self.batch_norm_decay = batch_norm_decay  # BN衰减系数

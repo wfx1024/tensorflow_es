@@ -9,27 +9,8 @@ import time
 import config.setting as setting
 import config.predict_setting as predict_setting
 from utils.plot_utils import plot_one_box
-from utils.data_aug import letterbox_resize
+from utils.img_tricks import letterbox_resize
 from net.yolov3 import YoloV3
-
-
-# def plot_bbox(img, bboxes, scores, labels):
-#     """
-#
-#     :return:
-#     """
-#     print("bbox coords:", bboxes, '*' * 30, "scores:", scores, '*' * 30, "labels:", labels)
-#
-#     for i in range(len(bboxes)):
-#         x0, y0, x1, y1 = bboxes[i]
-#         plot_one_box(
-#             img, [x0, y0, x1, y1],
-#             label=predict_setting.classes[labels[i]] + ', {:.2f}%'.format(scores[i] * 100),
-#             line_thickness=3, color=predict_setting.color_table[labels[i]]
-#         )
-#     cv2.imshow('Detection result', img)
-#     cv2.imwrite(predict_setting.save_img_path, img)
-#     cv2.waitKey(0)
 
 
 def detect(yolov3, img_origin):
@@ -71,7 +52,7 @@ def detect(yolov3, img_origin):
     return img_origin
 
 
-def img_detect2(img_origin):
+def img_detect(img_origin):
     with tf.variable_scope('yolov3'):
         yolov3 = YoloV3()
     img_origin = detect(yolov3, img_origin)
@@ -81,8 +62,7 @@ def img_detect2(img_origin):
     return img_origin
 
 
-def vedio_detect2(input_video):
-    vid = cv2.VideoCapture(input_video)
+def vedio_detect(vid):
     video_writer = cv2.VideoWriter(
         'video_result.mp4', cv2.VideoWriter_fourcc('m', 'p', '4', 'v'),
         int(vid.get(5)), (int(vid.get(3)), int(vid.get(4)))  # fps, width, height
@@ -119,11 +99,19 @@ def main():
     # parser.add_argument("--weights_path", type=str, default=config.weights_path, help="权重路径")
     args = parser.parse_args()
 
+    # 图片检测
     if args.file_type == 'img':
         img_origin = cv2.imread(args.input_image)  # 原始图片
-        img_detect2(img_origin)
+        if img_origin is None:
+            raise Exception("未找到图片文件！")
+        img_detect(img_origin)
+
+    # 视频检测
     elif args.file_type == 'vedio':
-        vedio_detect2(args.input_vedio)
+        vid = cv2.VideoCapture(args.input_vedio)
+        if vid is None:
+            raise Exception("未找到视频文件！")
+        vedio_detect(vid)
 
 
 if __name__ == '__main__':

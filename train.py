@@ -14,7 +14,7 @@ from utils.misc_utils import shuffle_and_overwrite, make_summary, config_learnin
 from utils.eval_utils import evaluate_on_cpu, evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_rec
 from utils.nms_utils import gpu_nms
 
-from model import yolov3
+from model import YoloV3
 
 # 设置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s',

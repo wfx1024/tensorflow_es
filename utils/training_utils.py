@@ -11,7 +11,6 @@ import config.train_setting as train_setting
 一些文件操作
 """
 
-
 def make_summary(name, val):
     return summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag=name, simple_value=val)])
 
@@ -163,6 +162,7 @@ def config_learning_rate(args, global_step):
                                            name='piecewise_learning_rate')
     else:
         raise ValueError('Unsupported learning rate type!')
+
 
 def get_learning_rate(global_step):
     """

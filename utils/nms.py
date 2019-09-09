@@ -30,7 +30,7 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thre
     max_boxes = tf.constant(max_boxes, dtype='int32')
 
     # since we do nms for single image, then reshape it
-    boxes = tf.reshape(boxes, [-1, 4]) # '-1' means we don't konw the exact number of boxes
+    boxes = tf.reshape(boxes, [-1, 4])  # '-1' means we don't konw the exact number of boxes
     score = tf.reshape(scores, [-1, num_classes])
 
     # Step 1: Create a filtering mask based on "box_class_scores" by using "threshold".

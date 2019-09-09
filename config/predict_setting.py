@@ -6,10 +6,10 @@ from utils.plot_utils import get_color_table
 """
 预测过程参数
 """
-file_type = 'vedio'  # img or vedio
+file_type = 'img'  # img or vedio
 anchors_path = './data/yolo_anchors.txt'  # k-means 得到的anchor box
 anchors = parse_anchors(anchors_path)  # anchor
-input_image = './data/demo_data/me.png'  # 输入图片
+input_image = './data/demo_data/dog.jpg'  # 输入图片
 input_vedio = './data/demo_data/1.mp4'  # 输入视频
 class_name_path = './data/coco.names'  # 类别文件
 classes = read_class_names(class_name_path)  # 类别

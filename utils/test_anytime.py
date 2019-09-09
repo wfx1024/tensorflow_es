@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 import random
+import os
 
 
 def test_dim_size():
@@ -23,30 +24,38 @@ def test_dim_size():
 
 def test_tf_data():
     """
-       验证数据
-       :return:
-       """
-    import args
-    from utils.data_utils import get_batch_data
-    train_dataset = tf.data.TextLineDataset(args.train_file)
-    train_dataset = train_dataset.shuffle(args.train_img_cnt)  # 先随机重排
-    train_dataset = train_dataset.batch(args.batch_size)  # 分批
-    train_dataset = train_dataset.map(
-        lambda x: tf.py_func(
-            get_batch_data,
-            inp=[x, args.class_num, args.img_size, args.anchors, 'train',
-                 args.multi_scale_train, args.use_mix_up, args.letterbox_resize],
-            Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
-        num_parallel_calls=args.num_threads
+    验证数据
+    :return:
+    """
+    training_dataset = tf.data.Dataset.range(100).repeat()
+    validation_dataset = tf.data.Dataset.range(50)
+
+    handle = tf.placeholder(tf.string, shape=[])  # placeholder作为参数
+    # 定义一个可让您在两个数据集之间切换的可馈送迭代器，
+    iterator = tf.data.Iterator.from_string_handle(
+        handle,
+        training_dataset.output_types,
+        training_dataset.output_shapes
     )
-    # train_dataset = train_dataset.prefetch(args.prefetech_buffer)  # 每次取5
-    iterator = train_dataset.make_one_shot_iterator()  # 构建迭代器，自动初始化
-    next_element = iterator.get_next()  # 获取下一个元素op
+    next_element = iterator.get_next()
+    # 定义两个迭代器
+    training_iterator = training_dataset.make_one_shot_iterator()  # make_one_shot_iterator自动init
+    validation_iterator = validation_dataset.make_initializable_iterator()
+
     with tf.Session() as sess:
-        for i in range(12):  # 获取每一个元素
-            value = sess.run(next_element)
-            print(i, "--->", value)
-    return train_dataset
+        # string_handle()获得该iterator的handle参数
+        training_handle = sess.run(training_iterator.string_handle())
+        validation_handle = sess.run(validation_iterator.string_handle())
+
+        for _ in range(20):  # 训练集上运行20个epochs
+            for i in range(200):
+                # 将各自的handle馈送回去
+                value = sess.run(next_element, feed_dict={handle: training_handle})
+                print("train:", i, "-->", value)
+            sess.run(validation_iterator.initializer)
+            for i in range(50):
+                sess.run(next_element, feed_dict={handle: validation_handle})
+                print("test:", i, "-->", value)
 
 
 def test_color():
@@ -58,3 +67,18 @@ def test_color():
             rgb = [random.randint(0, 255) for _ in range(3)]
         color_table[i] = rgb
     print(color_table)
+
+
+def test_ckpt_variable():
+    """
+    查看保存的所有信息
+    :return:
+    """
+    from tensorflow.python import pywrap_tensorflow
+    model_dir = '../data/darknet_weights'
+    checkpoint_path = os.path.join(model_dir, "yolov3.ckpt")
+    reader = pywrap_tensorflow.NewCheckpointReader(checkpoint_path)
+    var_to_shape_map = reader.get_variable_to_shape_map()
+    for key in var_to_shape_map:
+        print("tensor_name: ", key)
+        # print(reader.get_tensor(key))

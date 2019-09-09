@@ -151,26 +151,27 @@ def darknet53(inputs):
     return route_1, route_2, route_3
 
 
-def detect_net(route_1, route_2, route_3):
+def detect_net(route_1, route_2, route_3, use_static_shape):
     """
     DarkNet-53输出的三个值
     :param route_1:
     :param route_2:
     :param route_3:
+    :param use_static_shape:
     :return:
     """
     print("Build detect net after Darknet-53...")
     inter1, feature_map_1 = yolo_block(route_3, 512, setting.class_num)
     inter1 = conv2d(inter1, 256, 1)
     inter1 = upsample_layer(
-        inter1, route_2.get_shape().as_list() if setting.use_static_shape else tf.shape(route_2)
+        inter1, route_2.get_shape().as_list() if use_static_shape else tf.shape(route_2)
     )
     concat1 = tf.concat([inter1, route_2], axis=3)
     inter2, feature_map_2 = yolo_block(concat1, 256, setting.class_num)
 
     inter2 = conv2d(inter2, 128, 1)
     inter2 = upsample_layer(
-        inter2, route_1.get_shape().as_list() if setting.use_static_shape else tf.shape(route_1)
+        inter2, route_1.get_shape().as_list() if use_static_shape else tf.shape(route_1)
     )
     concat2 = tf.concat([inter2, route_1], axis=3)
     _, feature_map_3 = yolo_block(concat2, 128, setting.class_num)
