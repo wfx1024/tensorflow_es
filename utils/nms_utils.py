@@ -5,11 +5,18 @@ from __future__ import division, print_function
 import numpy as np
 import tensorflow as tf
 
+
 def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thresh=0.5):
     """
-    Perform NMS on GPU using TensorFlow.
-
-    params:
+    非极大值抑制(tensorflow+gpu)
+    :param boxes:
+    :param scores:
+    :param num_classes:
+    :param max_boxes:
+    :param score_thresh:
+    :param nms_thresh:
+    :return:
+     params:
         boxes: tensor of shape [1, 10647, 4] # 10647=(13*13+26*26+52*52)*3, for input 416*416 image
         scores: tensor of shape [1, 10647, num_classes], score=conf*prob
         num_classes: total number of classes
@@ -23,7 +30,7 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thre
     max_boxes = tf.constant(max_boxes, dtype='int32')
 
     # since we do nms for single image, then reshape it
-    boxes = tf.reshape(boxes, [-1, 4]) # '-1' means we don't konw the exact number of boxes
+    boxes = tf.reshape(boxes, [-1, 4])  # '-1' means we don't konw the exact number of boxes
     score = tf.reshape(scores, [-1, num_classes])
 
     # Step 1: Create a filtering mask based on "box_class_scores" by using "threshold".
@@ -50,9 +57,13 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thre
 
 def py_nms(boxes, scores, max_boxes=50, iou_thresh=0.5):
     """
-    Pure Python NMS baseline.
-
-    Arguments: boxes: shape of [-1, 4], the value of '-1' means that dont know the
+    非极大值抑制(纯python)
+    :param boxes:
+    :param scores:
+    :param max_boxes:
+    :param iou_thresh:
+    :return:
+     Arguments: boxes: shape of [-1, 4], the value of '-1' means that dont know the
                       exact number of boxes
                scores: shape of [-1,]
                max_boxes: representing the maximum of boxes to be selected by non_max_suppression
@@ -90,12 +101,18 @@ def py_nms(boxes, scores, max_boxes=50, iou_thresh=0.5):
 
 def cpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thresh=0.5):
     """
-    Perform NMS on CPU.
-    Arguments:
+    非极大值抑制(cpu)
+    :param boxes:
+    :param scores:
+    :param num_classes:
+    :param max_boxes:
+    :param score_thresh:
+    :param iou_thresh:
+    :return:
+     Arguments:
         boxes: shape [1, 10647, 4]
         scores: shape [1, 10647, num_classes]
     """
-
     boxes = boxes.reshape(-1, 4)
     scores = scores.reshape(-1, num_classes)
     # Picked bounding boxes
@@ -105,7 +122,7 @@ def cpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thre
         indices = np.where(scores[:,i] >= score_thresh)
         filter_boxes = boxes[indices]
         filter_scores = scores[:,i][indices]
-        if len(filter_boxes) == 0: 
+        if len(filter_boxes) == 0:
             continue
         # do non_max_suppression on the cpu
         indices = py_nms(filter_boxes, filter_scores,
@@ -113,7 +130,7 @@ def cpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, iou_thre
         picked_boxes.append(filter_boxes[indices])
         picked_score.append(filter_scores[indices])
         picked_label.append(np.ones(len(indices), dtype='int32')*i)
-    if len(picked_boxes) == 0: 
+    if len(picked_boxes) == 0:
         return None, None, None
 
     boxes = np.concatenate(picked_boxes, axis=0)
