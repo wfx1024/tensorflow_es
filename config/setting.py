@@ -4,10 +4,10 @@ from utils.misc_utils import parse_anchors, read_class_names
 from utils.plot_utils import get_color_table
 
 """文件参数"""
-class_name_path = '../data/coco.names'  # 类别文件
+class_name_path = './data/coco.names'  # 类别文件
 classes = read_class_names(class_name_path)  # 类别
 class_num = len(classes)  # 类别数量
-anchors_path = '../data/yolo_anchors.txt'  # anchor boxes文件
+anchors_path = './data/yolo_anchors.txt'  # anchor boxes文件
 anchors = parse_anchors(anchors_path)  # anchor
 weights_path = './data/darknet_weights/yolov3.ckpt'  # 权重文件
 

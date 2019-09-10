@@ -611,7 +611,7 @@ def build_train_dataset():
             Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
         num_parallel_calls=train_setting.num_threads
     )
-    train_dataset = train_dataset.prefetch(train_setting.prefetech_buffer)  # 每次取5
+    train_dataset = train_dataset.prefetch(train_setting.prefetech_buffer)  # 每次取1
     return train_dataset
 
 
@@ -639,6 +639,7 @@ def create_iterator():
     创建迭代器
     :return:
     """
+    print('\n----------- Begin building dataset  -----------\n')
     train_dataset = build_train_dataset()  # 训练集
     val_dataset = build_val_dataset()  # 验证集
     iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
@@ -654,5 +655,5 @@ def create_iterator():
     image.set_shape([None, None, None, 3])
     for y in y_true:
         y.set_shape([None, None, None, None, None])
-
+    print('\n----------- Finish building dataset  -----------\n')
     return train_init_op, val_init_op, image_ids, image, y_true

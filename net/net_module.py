@@ -51,8 +51,8 @@ def conv2d(inputs, filters, kernel_size, strides=1):
         padding=('SAME' if strides == 1 else 'VALID')
     )
     log = log + "conv--(name: %s kernel_size:%d*%d kernel_num:%d stride:%d " % (inputs.name, kernel_size,  kernel_size, filters, strides)
-    log = log + "input:%d*%d*%d " % (inputs.shape[1], inputs.shape[2], inputs.shape[3])
-    log = log + "out:%d*%d*%d " % (out.shape[1], out.shape[2], inputs.shape[3])
+    # log = log + "input:%d*%d*%d " % (inputs.shape[1], inputs.shape[2], inputs.shape[3])
+    # log = log + "out:%d*%d*%d " % (out.shape[1], out.shape[2], inputs.shape[3])
     print(log)
     return out
 
@@ -117,7 +117,7 @@ def darknet53(inputs):
     :param inputs: input
     :return:
     """
-    print("Building Darknet-53...")
+    print("Begin building Darknet-53...")
     # 第一层的两个卷积
     net = conv2d(inputs, 32,  3, strides=1)  # 3,3,1
     net = conv2d(net, 64,  3, strides=2)
@@ -147,7 +147,7 @@ def darknet53(inputs):
     for i in range(4):
         net = res(net, 512)
     route_3 = net
-    print("Building Darknet-53 end...")
+    print("Finish building Darknet-53...")
     return route_1, route_2, route_3
 
 
@@ -160,7 +160,7 @@ def detect_net(route_1, route_2, route_3, use_static_shape):
     :param use_static_shape:
     :return:
     """
-    print("Build detect net after Darknet-53...")
+    print("Begin building detect net after Darknet-53...")
     inter1, feature_map_1 = yolo_block(route_3, 512, setting.class_num)
     inter1 = conv2d(inter1, 256, 1)
     inter1 = upsample_layer(
@@ -175,5 +175,5 @@ def detect_net(route_1, route_2, route_3, use_static_shape):
     )
     concat2 = tf.concat([inter2, route_1], axis=3)
     _, feature_map_3 = yolo_block(concat2, 128, setting.class_num)
-    print("Build detect net after Darknet-53 end...")
+    print("Finishe building detect net after Darknet-53 end...")
     return feature_map_1, feature_map_2, feature_map_3

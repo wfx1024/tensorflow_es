@@ -5,7 +5,7 @@ from utils.misc_utils import parse_anchors, read_class_names
 import math
 
 """
-# This file contains the parameter used in train.py
+# This file contains the parameter used in old_train.py
 """
 
 

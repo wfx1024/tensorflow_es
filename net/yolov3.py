@@ -52,17 +52,18 @@ class YoloV3:
         self.best_mAP = - np.Inf  # mAP先设为infinite
         self._build_networks()  # 构建网络
         self._feature_map_to_bboxes()  # 将feature map转换为bboxes信息。
-
         self.pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
         self.pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
-        self.sess = tf.Session()
-        self.sess.run(tf.initialize_all_variables())
+
         self.saver = tf.train.Saver()
-        self.saver.restore(self.sess, setting.weights_path)
-        self.writer = tf.summary.FileWriter(train_setting.log_dir, self.sess.graph)
+        self.sess = tf.Session()
+        print("Begin initializing variables...")
+        self.sess.run(tf.initialize_all_variables())
+        print("Finish initializing variables...")
         if is_training:
             self._compute_loss()
             self._optimizer()
+        self.writer = tf.summary.FileWriter(train_setting.log_dir, self.sess.graph)
         self.merged = tf.summary.merge_all()
 
     def _build_networks(self):
@@ -70,10 +71,10 @@ class YoloV3:
         构建DarkNet53
         :return:
         """
-        self.input_data = tf.placeholder(
-            tf.float32,
-            [1, setting.img_size[1], setting.img_size[0], 3]
-        )
+        if self.use_static_shape:
+            self.input_data = tf.placeholder(tf.float32, [1, setting.img_size[0], setting.img_size[1], 3])
+        else:
+            self.input_data = tf.placeholder(tf.float32, [None, None, None, 3])
         self.img_size = tf.shape(self.input_data)[1:3]
         with slim.arg_scope([slim.conv2d, slim.batch_norm], reuse=self.reuse):
             with slim.arg_scope(
@@ -114,6 +115,7 @@ class YoloV3:
             # prob_logits: [N, 13*13*3, class_num]
             return boxes, conf_logits, prob_logits
 
+        print("Begin building feature map to bboxes op...")
         feature_map_anchors = [
             (self.feature_map_1, self.anchors[6:9]),  # (116,90), (156,198), (373,326)
             (self.feature_map_2, self.anchors[3:6]),  # (30,61), (62,45), (59,119),
@@ -151,6 +153,7 @@ class YoloV3:
             boxes, pred_scores, setting.class_num, max_boxes=setting.max_boxes,
             score_thresh=self.score_threshold, nms_thresh=setting.nms_threshold
         )
+        print("Finish building feature map to bboxes op...")
 
     def predict(self, img_origin):
         """
@@ -370,6 +373,7 @@ class YoloV3:
         计算损失
         :return:
         """
+        print("Begin building compute loss op...")
         feature_map = self.feature_map_1, self.feature_map_2, self.feature_map_3
         loss_xy, loss_wh, loss_conf, loss_class = 0., 0., 0., 0.
         anchor_group = [self.anchors[6:9], self.anchors[3:6], self.anchors[0:3]]
@@ -383,13 +387,20 @@ class YoloV3:
             loss_class += result[3]
         total_loss = loss_xy + loss_wh + loss_conf + loss_class
         self.loss = [total_loss, loss_xy, loss_wh, loss_conf, loss_class]
+        print("Finish building compute loss op...")
 
     def _optimizer(self):
         """
         构建优化器
         :return:
         """
-        print("building optimization...")
+        print("Begin building optimizer...")
+        # 步数
+        self.global_step = tf.Variable(
+            float(train_setting.global_step),
+            collections=[tf.GraphKeys.LOCAL_VARIABLES],
+            trainable=False
+        )
         self.l2_loss = tf.losses.get_regularization_loss()  # L2损失
         tf.summary.scalar('train_batch_statistics/total_loss', self.loss[0])
         tf.summary.scalar('train_batch_statistics/loss_xy', self.loss[1])
@@ -400,12 +411,6 @@ class YoloV3:
 
         update_vars = tf.contrib.framework.get_variables_to_restore(include=train_setting.update_part)
 
-        # 步数
-        self.global_step = tf.Variable(
-            float(train_setting.global_step),
-            trainable=False,
-            collections=[tf.GraphKeys.LOCAL_VARIABLES]
-        )
         # 学习率
         self.learning_rate = get_learning_rate(self.global_step)
 
@@ -428,7 +433,7 @@ class YoloV3:
             print('保存optimizer参数到checkpoint! 在fine-tuning后续步骤中 restore global_step')
             self.saver_to_save = tf.train.Saver()
             self.saver_best = tf.train.Saver()
-        print("building optimization end...")
+        print("Finish building optimizer...")
 
     def train(self):
         """
@@ -462,6 +467,9 @@ class YoloV3:
 
             self._save_weight(epoch, global_step, learning_rate)
             self._evaluate_in_val(epoch, global_step, learning_rate)
+
+    def _resize_img(self):
+        return None
 
     def _save_weight(self, epoch, global_step, learning_rate):
         """

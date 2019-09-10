@@ -31,7 +31,10 @@ def detect(yolov3, img_origin):
     img = img[np.newaxis, :] / 255.
 
     bboxes, scores, labels = yolov3.predict(img)
-
+    # bboxes, scores, labels = yolov3.sess.run(
+    #     [yolov3.boxes, yolov3.scores, yolov3.labels],
+    #     feed_dict={yolov3.input_data: img}
+    # )
     # 对原图调节坐标
     if predict_setting.letterbox_resize_used:
         bboxes[:, [0, 2]] = (bboxes[:, [0, 2]] - dw) / resize_ratio

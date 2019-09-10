@@ -12,8 +12,8 @@ import math
 total_epoches = 100  # epoch数
 batch_size = 6  # batch 大小
 """样本相关"""
-train_file = '../data/sample/train.txt'  # 训练样本列表txt文件
-val_file = '../data/sample/val.txt'  # 验证样本列表txt文件
+train_file = './data/sample/train.txt'  # 训练样本列表txt文件
+val_file = './data/sample/val.txt'  # 验证样本列表txt文件
 train_img_cnt = len(open(train_file, 'r').readlines())  # 测试集行数
 val_img_cnt = len(open(val_file, 'r').readlines())  # 验证集行数
 train_batch_num = int(math.ceil(float(train_img_cnt) / batch_size))  # batch数
@@ -33,7 +33,7 @@ global_step = 0  # 中断训练初始化
 
 # tf.data参数
 num_threads = 10  # tf.data pipeline线程数
-prefetech_buffer = 5  # Prefetech_buffer used in tf.data pipeline.
+prefetech_buffer = 1  # 每次取多少个  5
 
 """训练参数"""
 optimizer_name = 'momentum'  # Chosen from [sgd, momentum, adam, rmsprop]

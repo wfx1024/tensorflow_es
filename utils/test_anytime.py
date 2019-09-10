@@ -3,6 +3,7 @@
 import tensorflow as tf
 import random
 import os
+import numpy as np
 
 
 def test_dim_size():
@@ -85,10 +86,37 @@ def test_ckpt_variable():
 
 
 def test_dataset():
-    from utils.dataset_tricks import create_iterator
-    train_init_op, val_init_op, image_ids, image, y_true = create_iterator()
+    from utils.dataset_tricks import build_train_dataset
+    train_dataset = build_train_dataset()  # 训练集
+    iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
+    next_element = iterator.get_next()
 
+    training_init_op = iterator.make_initializer(train_dataset)
     with tf.Session() as sess:
-        for _ in range(3):
-            image = sess.run(image)
-            print(image)
+        sess.run(training_init_op)
+        for _ in range(1):
+            result = sess.run(next_element)
+            print(result)
+
+
+def test_data_set():
+    features = np.array([1, 2, 3, 4])
+    labels = np.array([10, 20, 30, 40])
+    training_dataset = tf.data.Dataset.from_tensor_slices((features, labels))
+    training_dataset = training_dataset.map(
+        lambda x, y: (x + 1, y + 2)
+    )
+
+    iterator = tf.data.Iterator.from_structure(
+        training_dataset.output_types,
+        training_dataset.output_shapes
+    )
+    a, b = iterator.get_next()
+    # 初始化迭代器
+    training_init_op = iterator.make_initializer(training_dataset)
+    with tf.Session() as sess:
+        for epoch in range(20):  # 训练集上运行20个epochs
+            sess.run(training_init_op)
+            for i in range(4):
+                value = sess.run(a)
+                print(epoch, "-->", i, "-->", value)
