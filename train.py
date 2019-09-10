@@ -34,6 +34,7 @@ gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num, args.nms
 ##################
 # tf.data pipeline
 ##################
+
 train_dataset = tf.data.TextLineDataset(args.train_file)
 train_dataset = train_dataset.shuffle(args.train_img_cnt)
 train_dataset = train_dataset.batch(args.batch_size)

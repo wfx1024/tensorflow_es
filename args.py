@@ -8,7 +8,7 @@ import math
 
 ### Some paths
 input_image = './data/demo_data/dog.jpg'  # 输入图片
-input_vedio = './data/demo_data/1.mp4'  # 输入视频
+input_vedio = './data/demo_data/video_demo.mp4'  # 输入视频
 train_file = './data/my_data/train.txt'  # 训练文件路径
 val_file = './data/my_data/val.txt'  # 验证文件路径
 restore_path = './data/darknet_weights/yolov3.ckpt'  # weights路径
