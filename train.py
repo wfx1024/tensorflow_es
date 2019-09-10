@@ -6,10 +6,9 @@ import tensorflow as tf
 import numpy as np
 import logging
 from tqdm import trange
-
 import args
 
-from utils.data_utils import get_batch_data
+from dataset_utils import create_iterator
 from utils.misc_utils import shuffle_and_overwrite, make_summary, config_learning_rate, config_optimizer, AverageMeter
 from utils.eval_utils import evaluate_on_cpu, evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_rec
 from utils.nms_utils import gpu_nms
@@ -35,40 +34,7 @@ gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, args.class_num, args.nms
 # tf.data pipeline
 ##################
 
-train_dataset = tf.data.TextLineDataset(args.train_file)
-train_dataset = train_dataset.shuffle(args.train_img_cnt)
-train_dataset = train_dataset.batch(args.batch_size)
-train_dataset = train_dataset.map(
-    lambda x: tf.py_func(get_batch_data,
-                         inp=[x, args.class_num, args.img_size, args.anchors, 'train', args.multi_scale_train, args.use_mix_up, args.letterbox_resize],
-                         Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
-    num_parallel_calls=args.num_threads
-)
-train_dataset = train_dataset.prefetch(args.prefetech_buffer)
-
-val_dataset = tf.data.TextLineDataset(args.val_file)
-val_dataset = val_dataset.batch(1)
-val_dataset = val_dataset.map(
-    lambda x: tf.py_func(get_batch_data,
-                         inp=[x, args.class_num, args.img_size, args.anchors, 'val', False, False, args.letterbox_resize],
-                         Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
-    num_parallel_calls=args.num_threads
-)
-val_dataset.prefetch(args.prefetech_buffer)
-
-iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
-train_init_op = iterator.make_initializer(train_dataset)
-val_init_op = iterator.make_initializer(val_dataset)
-
-# get an element from the chosen dataset iterator
-image_ids, image, y_true_13, y_true_26, y_true_52 = iterator.get_next()
-y_true = [y_true_13, y_true_26, y_true_52]
-
-# tf.data pipeline will lose the data `static` shape, so we need to set it manually
-image_ids.set_shape([None])
-image.set_shape([None, None, None, 3])
-for y in y_true:
-    y.set_shape([None, None, None, None, None])
+train_init_op, val_init_op, image_ids, image, y_true = create_iterator()
 
 ##################
 # Model definition
@@ -82,7 +48,11 @@ y_pred = yolo_model.predict(pred_feature_maps)
 l2_loss = tf.losses.get_regularization_loss()
 
 # setting restore parts and vars to update
-saver_to_restore = tf.train.Saver(var_list=tf.contrib.framework.get_variables_to_restore(include=args.restore_include, exclude=args.restore_exclude))
+saver_to_restore = tf.train.Saver(
+    var_list=tf.contrib.framework.get_variables_to_restore(
+        include=args.restore_include, exclude=args.restore_exclude
+    )
+)
 update_vars = tf.contrib.framework.get_variables_to_restore(include=args.update_part)
 
 tf.summary.scalar('train_batch_statistics/total_loss', loss[0])
