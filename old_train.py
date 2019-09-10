@@ -104,7 +104,7 @@ with tf.Session() as sess:
         loss_total, loss_xy, loss_wh, loss_conf, loss_class = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
         for i in trange(train_setting.train_batch_num):
-            image, __y_true = sess.run(image, y_true)
+            image, __y_true = sess.run([image, y_true])
             _, summary, __y_pred, __loss, __global_step, __lr = sess.run(
                 [train_op, merged, y_pred, loss, global_step, learning_rate],
                 feed_dict={yolo_model.input_data: image})
@@ -149,7 +149,7 @@ with tf.Session() as sess:
             val_preds = []
 
             for j in trange(train_setting.val_img_cnt):
-                __image_ids, __y_true, image = sess.run(image_ids, image, y_true)
+                __image_ids, __y_true, image = sess.run([image_ids, image, y_true])
                 __y_pred, __loss = sess.run(
                     [y_pred, loss],
                     feed_dict={yolo_model.input_data: image}
