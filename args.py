@@ -49,16 +49,21 @@ pw_boundaries = [30, 50]  # epoch based boundaries
 pw_values = [learning_rate_init, 3e-5, 1e-5]
 
 """fine tuning"""
-# Choose the parts you want to restore the weights. List form.
-# restore_include: None, restore_exclude: None  => restore the whole model
-# restore_include: None, restore_exclude: scope  => restore the whole model except `scope`
-# restore_include: scope1, restore_exclude: scope2  => if scope1 contains scope2, restore scope1 and not restore scope2 (scope1 - scope2)
-# choise 1: only restore the darknet body
+# restore_include: None, restore_exclude: None  => 加载所有model的weights
+# restore_include: None, restore_exclude: scope  =>加载所有model的weights, 除去scope
+# restore_include: scope1, restore_exclude: scope2  => 加载(scope1 - scope2)的部分
+
+# 策略 1: 只加载darknet53_body
 # restore_include = ['yolov3/darknet53_body']
 # restore_exclude = None
-# choise 2: restore all layers except the last 3 conv2d layers in 3 scale
+# 策略 2: 除了最后3个conv2d layers in 3 scale，加载所有layers
 restore_include = None
-restore_exclude = ['yolov3/yolov3_head/Conv_14', 'yolov3/yolov3_head/Conv_6', 'yolov3/yolov3_head/Conv_22']
+restore_exclude = [
+    'yolov3/yolov3_head/Conv_14',
+    'yolov3/yolov3_head/Conv_6',
+    'yolov3/yolov3_head/Conv_22'
+]
+
 # Choose the parts you want to finetune. List form.
 # Set to None to train the whole model.
 update_part = ['yolov3/yolov3_head']
