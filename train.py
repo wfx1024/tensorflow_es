@@ -94,10 +94,14 @@ tf.summary.scalar('train_batch_statistics/loss_l2', l2_loss)
 tf.summary.scalar('train_batch_statistics/loss_ratio', l2_loss / loss[0])
 
 global_step = tf.Variable(float(args.global_step), trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
+
+# 学习率
 if args.use_warm_up:
-    learning_rate = tf.cond(tf.less(global_step, args.train_batch_num * args.warm_up_epoch), 
-                            lambda: args.learning_rate_init * global_step / (args.train_batch_num * args.warm_up_epoch),
-                            lambda: config_learning_rate(args, global_step - args.train_batch_num * args.warm_up_epoch))
+    learning_rate = tf.cond(
+        tf.less(global_step, args.train_batch_num * args.warm_up_epoch),
+        lambda: args.learning_rate_init * global_step / (args.train_batch_num * args.warm_up_epoch),
+        lambda: config_learning_rate(args, global_step - args.train_batch_num * args.warm_up_epoch)
+    )
 else:
     learning_rate = config_learning_rate(args, global_step)
 tf.summary.scalar('learning_rate', learning_rate)
@@ -108,18 +112,18 @@ if not args.save_optimizer:
 
 optimizer = config_optimizer(args.optimizer_name, learning_rate)
 
-# set dependencies for BN ops
+# BN操作
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
-    # train_op = optimizer.minimize(loss[0] + l2_loss, var_list=update_vars, global_step=global_step)
-    # apply gradient clip to avoid gradient exploding
+    # 梯度下降
     gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)
+    # 应用gradient clip, 防止梯度爆炸
     clip_grad_var = [gv if gv[0] is None else [
           tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
     train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
 if args.save_optimizer:
-    print('Saving optimizer parameters to checkpoint! Remember to restore the global_step in the fine-tuning afterwards.')
+    print('保存optimizer变量到checkpoint文件!后续fine-tuning时restore global_step')
     saver_to_save = tf.train.Saver()
     saver_best = tf.train.Saver()
 
@@ -136,7 +140,10 @@ with tf.Session() as sess:
     for epoch in range(args.total_epoches):
 
         sess.run(train_init_op)
-        loss_total, loss_xy, loss_wh, loss_conf, loss_class = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
+
+        # 初始化五种损失函数
+        loss_total, loss_xy, loss_wh, loss_conf, loss_class\
+            = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
         for i in trange(args.train_batch_num):
             _, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
@@ -145,6 +152,7 @@ with tf.Session() as sess:
 
             writer.add_summary(summary, global_step=__global_step)
 
+            # 更新误差
             loss_total.update(__loss[0], len(__y_pred[0]))
             loss_xy.update(__loss[1], len(__y_pred[0]))
             loss_wh.update(__loss[2], len(__y_pred[0]))
@@ -152,7 +160,7 @@ with tf.Session() as sess:
             loss_class.update(__loss[4], len(__y_pred[0]))
 
             if __global_step % args.train_evaluation_step == 0 and __global_step > 0:
-                # recall, precision = evaluate_on_cpu(__y_pred, __y_true, args.class_num, args.nms_topk, args.score_threshold, args.nms_threshold)
+                # 召回率,精确率
                 recall, precision = evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __y_pred, __y_true, args.class_num, args.nms_threshold)
 
                 info = "Epoch: {}, global_step: {} | loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f} | ".format(
@@ -166,15 +174,14 @@ with tf.Session() as sess:
 
                 if np.isnan(loss_total.average):
                     print('****' * 10)
-                    raise ArithmeticError(
-                        'Gradient exploded! Please train again and you may need modify some parameters.')
+                    raise ArithmeticError('梯度爆炸，修改参数后重新训练')
 
         # NOTE: this is just demo. You can set the conditions when to save the weights.
         if epoch % args.save_epoch == 0 and epoch > 0:
             if loss_total.average <= 2.:
                 saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.average, __lr))
 
-        # switch to validation dataset for evaluation
+        #  验证集评估评估方法
         if epoch % args.val_evaluation_epoch == 0 and epoch >= args.warm_up_epoch:
             sess.run(val_init_op)
 
@@ -194,7 +201,7 @@ with tf.Session() as sess:
                 val_loss_conf.update(__loss[3])
                 val_loss_class.update(__loss[4])
 
-            # calc mAP
+            # 计算mAP
             rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
             gt_dict = parse_gt_rec(args.val_file, args.img_size, args.letterbox_resize)
 

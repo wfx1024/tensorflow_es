@@ -53,26 +53,27 @@ class yolov3(object):
         :param anchors: 3个anchor，shape=3,2
         :return:
         """
-        # NOTE: size in [h, w] format! don't get messed up!
+        # 选用tf.shape()和tensor.get_shape(),得到grid划分(前者快一点点)
+        # 格式为[h, w], 格子划分13*13，,26*26, 52*52
         grid_size = feature_map.get_shape().as_list()[1:3] if self.use_static_shape else tf.shape(feature_map)[1:3]  # [13, 13]
-        # the downscale ratio in height and weight
+        # 每个cell的大小，转成float32, [w, h]
         ratio = tf.cast(self.img_size / grid_size, tf.float32)
-        # rescale the anchors to the feature_map
-        # NOTE: the anchor is in [w, h] format!
+        # 转换anchor数据符合feature map, 注意顺序
         rescaled_anchors = [(anchor[0] / ratio[1], anchor[1] / ratio[0]) for anchor in anchors]
 
+        # 3个feature map channel都是255.
+        # 3*(1+4+4*20)=255, 含义为3个anchor boxes, 4个pre_boxes, 1个置信度confidence, 和80个类别的概率
+        # 将feture(1,13,13,255)转为shape=[?, grid_h, grid_w, 3, (5+80)]=(1,13,13,3,85)
         feature_map = tf.reshape(feature_map, [-1, grid_size[0], grid_size[1], 3, 5 + self.class_num])
 
-        # split the feature_map along the last dimension
-        # shape info: take 416x416 input image and the 13*13 feature_map for example:
-        # box_centers: [N, 13, 13, 3, 2] last_dimension: [center_x, center_y]
-        # box_sizes: [N, 13, 13, 3, 2] last_dimension: [width, height]
-        # conf_logits: [N, 13, 13, 3, 1]
-        # prob_logits: [N, 13, 13, 3, class_num]
+        # 将其在最后一维分割成4个tensor, 2个[?, grid_h, grid_w, 3, 2], [?, grid_h, grid_w, 3, 1], [?, grid_h, grid_w, 3, 20]
+        # 分别是(1,13,13,3,2)(1,13,13,3,2)(1,13,13,3,1)(1,13,13,3,80)
         box_centers, box_sizes, conf_logits, prob_logits = tf.split(feature_map, [2, 2, 1, self.class_num], axis=-1)
+
+        # logistic预测的, 所以sigmoid激活
         box_centers = tf.nn.sigmoid(box_centers)
 
-        # use some broadcast tricks to get the mesh coordinates
+        # 通过一些广播技巧，获得网格的坐标
         grid_x = tf.range(grid_size[1], dtype=tf.int32)
         grid_y = tf.range(grid_size[0], dtype=tf.int32)
         grid_x, grid_y = tf.meshgrid(grid_x, grid_y)
@@ -82,41 +83,38 @@ class yolov3(object):
         # shape: [13, 13, 1, 2]
         x_y_offset = tf.cast(tf.reshape(x_y_offset, [grid_size[0], grid_size[1], 1, 2]), tf.float32)
 
-        # get the absolute box coordinates on the feature_map 
+        # 获得框在feature map上的绝对坐标, 转换为原图坐标
         box_centers = box_centers + x_y_offset
-        # rescale to the original image scale
         box_centers = box_centers * ratio[::-1]
 
-        # avoid getting possible nan value with tf.clip_by_value
+        # tf.clip_by_value避免nan值
         box_sizes = tf.exp(box_sizes) * rescaled_anchors
         # box_sizes = tf.clip_by_value(tf.exp(box_sizes), 1e-9, 100) * rescaled_anchors
-        # rescale to the original image scale
+        # 转换成初始图片尺度
         box_sizes = box_sizes * ratio[::-1]
 
-        # shape: [N, 13, 13, 3, 4]
-        # last dimension: (center_x, center_y, w, h)
+        # [N, 13, 13, 3, 4]
+        # 最后的维度: (center_x, center_y, w, h)
         boxes = tf.concat([box_centers, box_sizes], axis=-1)
 
-        # shape:
         # x_y_offset: [13, 13, 1, 2]
-        # boxes: [N, 13, 13, 3, 4], rescaled to the original image scale
+        # boxes: [N, 13, 13, 3, 4],  转换成初始图片尺度
         # conf_logits: [N, 13, 13, 3, 1]
         # prob_logits: [N, 13, 13, 3, class_num]
         return x_y_offset, boxes, conf_logits, prob_logits
 
     def predict(self, feature_maps):
-        '''
-        Receive the returned feature_maps from `forward` function,
-        the produce the output predictions at the test stage.
-        '''
-        feature_map_1, feature_map_2, feature_map_3 = feature_maps
-
-        feature_map_anchors = [(feature_map_1, self.anchors[6:9]),
-                               (feature_map_2, self.anchors[3:6]),
-                               (feature_map_3, self.anchors[0:3])]
-        reorg_results = [self.reorg_layer(feature_map, anchors) for (feature_map, anchors) in feature_map_anchors]
+        """
+        提取的Feature map进行后续步骤，转化为bboxes信息
+        :return:
+        """
 
         def _reshape(result):
+            """
+            每种尺度改变形状
+            :param result:
+            :return:
+            """
             x_y_offset, boxes, conf_logits, prob_logits = result
             grid_size = x_y_offset.get_shape().as_list()[:2] if self.use_static_shape else tf.shape(x_y_offset)[:2]
             boxes = tf.reshape(boxes, [-1, grid_size[0] * grid_size[1] * 3, 4])
@@ -128,6 +126,17 @@ class yolov3(object):
             # prob_logits: [N, 13*13*3, class_num]
             return boxes, conf_logits, prob_logits
 
+        print("Begin building feature map to bboxes op...")
+        feature_map_1, feature_map_2, feature_map_3 = feature_maps
+        feature_map_anchors = [
+            (feature_map_1, self.anchors[6:9]),  # (116,90), (156,198), (373,326)
+            (feature_map_2, self.anchors[3:6]),  # (30,61), (62,45), (59,119),
+            (feature_map_3, self.anchors[0:3])  # (10,13), (16,30), (33,23),
+        ]  # 针对不同grid使用不同大小的anchor
+
+        # 对每种尺度进行特征融合
+        reorg_results = [self.reorg_layer(feature_map, anchors) for (feature_map, anchors) in feature_map_anchors]
+
         boxes_list, confs_list, probs_list = [], [], []
         for result in reorg_results:
             boxes, conf_logits, prob_logits = _reshape(result)
@@ -136,14 +145,13 @@ class yolov3(object):
             boxes_list.append(boxes)
             confs_list.append(confs)
             probs_list.append(probs)
-        
-        # collect results on three scales
-        # take 416*416 input image for example:
-        # shape: [N, (13*13+26*26+52*52)*3, 4]
+
+        # 三种尺度的结果, 416*416 举例
+        # [N, (13*13+26*26+52*52)*3, 4]
         boxes = tf.concat(boxes_list, axis=1)
-        # shape: [N, (13*13+26*26+52*52)*3, 1]
+        # [N, (13*13+26*26+52*52)*3, 1]
         confs = tf.concat(confs_list, axis=1)
-        # shape: [N, (13*13+26*26+52*52)*3, class_num]
+        # [N, (13*13+26*26+52*52)*3, class_num]
         probs = tf.concat(probs_list, axis=1)
 
         center_x, center_y, width, height = tf.split(boxes, [1, 1, 1, 1], axis=-1)
@@ -151,20 +159,18 @@ class yolov3(object):
         y_min = center_y - height / 2
         x_max = center_x + width / 2
         y_max = center_y + height / 2
-
         boxes = tf.concat([x_min, y_min, x_max, y_max], axis=-1)
-
+        print("Finish building feature map to bboxes op...")
         return boxes, confs, probs
     
     def loss_layer(self, feature_map_i, y_true, anchors):
-        '''
-        calc loss function from a certain scale
-        input:
-            feature_map_i: feature maps of a certain scale. shape: [N, 13, 13, 3*(5 + num_class)] etc.
-            y_true: y_ture from a certain scale. shape: [N, 13, 13, 3, 5 + num_class + 1] etc.
-            anchors: shape [9, 2]
-        '''
-        
+        """
+        计算损失函数
+        :param feature_map_i:  feature maps [N, 13, 13, 3*(5 + num_class)]
+        :param y_true: y_ture [N, 13, 13, 3, 5 + num_class + 1]
+        :param anchors: [3, 2]
+        :return:
+        """
         # size in [h, w] format! don't get messed up!
         grid_size = tf.shape(feature_map_i)[1:3]
         # the downscale ratio in height and weight
@@ -312,17 +318,16 @@ class yolov3(object):
 
         return iou
 
-    
     def compute_loss(self, y_pred, y_true):
-        '''
-        param:
-            y_pred: returned feature_map list by `forward` function: [feature_map_1, feature_map_2, feature_map_3]
-            y_true: input y_true by the tf.data pipeline
-        '''
+        """
+        计算损失
+        :return:
+        """
+        print("Begin building compute loss op...")
         loss_xy, loss_wh, loss_conf, loss_class = 0., 0., 0., 0.
         anchor_group = [self.anchors[6:9], self.anchors[3:6], self.anchors[0:3]]
 
-        # calc loss in 3 scales
+        # 计算3种维度的5种损失
         for i in range(len(y_pred)):
             result = self.loss_layer(y_pred[i], y_true[i], anchor_group[i])
             loss_xy += result[0]
@@ -330,4 +335,5 @@ class yolov3(object):
             loss_conf += result[2]
             loss_class += result[3]
         total_loss = loss_xy + loss_wh + loss_conf + loss_class
+        print("Finish building compute loss op...")
         return [total_loss, loss_xy, loss_wh, loss_conf, loss_class]
