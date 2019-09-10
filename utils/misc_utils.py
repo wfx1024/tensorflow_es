@@ -5,11 +5,6 @@ import tensorflow as tf
 import random
 
 from tensorflow.core.framework import summary_pb2
-import config.train_setting as train_setting
-
-"""
-一些文件操作
-"""
 
 
 def make_summary(name, val):
@@ -34,21 +29,15 @@ class AverageMeter(object):
 
 
 def parse_anchors(anchor_path):
-    """
-    改变anchors框的结构，将其shape变为[n, 2],dtype float32
-    :param anchor_path:
-    :return:
-    """
+    '''
+    parse anchors.
+    returned data: shape [N, 2], dtype float32
+    '''
     anchors = np.reshape(np.asarray(open(anchor_path, 'r').read().split(','), np.float32), [-1, 2])
     return anchors
 
 
 def read_class_names(class_name_path):
-    """
-    读取类别文件
-    :param class_name_path:类别文件路径
-    :return:
-    """
     names = {}
     with open(class_name_path, 'r') as data:
         for ID, name in enumerate(data):
@@ -138,12 +127,6 @@ def load_weights(var_list, weights_file):
 
 
 def config_learning_rate(args, global_step):
-    """
-    设置学习率
-    :param args:
-    :param global_step:
-    :return:
-    """
     if args.lr_type == 'exponential':
         lr_tmp = tf.train.exponential_decay(args.learning_rate_init, global_step, args.lr_decay_freq,
                                             args.lr_decay_factor, staircase=True, name='exponential_learning_rate')
@@ -164,35 +147,8 @@ def config_learning_rate(args, global_step):
     else:
         raise ValueError('Unsupported learning rate type!')
 
-def get_learning_rate(global_step):
-    """
-    获取学习率
-    :param global_step:
-    :return:
-    """
-    if train_setting.use_warm_up:  # 预热学习率
-        learning_rate = tf.cond(
-            tf.less(global_step, train_setting.train_batch_num * train_setting.warm_up_epoch),
-            lambda: train_setting.learning_rate_init * global_step / (
-                        train_setting.train_batch_num * train_setting.warm_up_epoch),
-            lambda: config_learning_rate(train_setting,
-                                         global_step - train_setting.train_batch_num * train_setting.warm_up_epoch)
-        )
-    else:  # 默认学习率
-        learning_rate = config_learning_rate(train_setting, global_step)
-    tf.summary.scalar('learning_rate', learning_rate)
-    return learning_rate
-
 
 def config_optimizer(optimizer_name, learning_rate, decay=0.9, momentum=0.9):
-    """
-    优化器选择
-    :param optimizer_name:
-    :param learning_rate:
-    :param decay:
-    :param momentum:
-    :return:
-    """
     if optimizer_name == 'momentum':
         return tf.train.MomentumOptimizer(learning_rate, momentum=momentum)
     elif optimizer_name == 'rmsprop':

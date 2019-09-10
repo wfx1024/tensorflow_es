@@ -19,7 +19,7 @@ from model import yolov3
 #################
 parser = argparse.ArgumentParser(description="YOLO-V3 eval procedure.")
 # some paths
-parser.add_argument("--eval_file", type=str, default="./data/sample/val.txt",
+parser.add_argument("--eval_file", type=str, default="./data/my_data/val.txt",
                     help="The path of the validation or test txt file.")
 
 parser.add_argument("--restore_path", type=str, default="./data/darknet_weights/yolov3.ckpt",

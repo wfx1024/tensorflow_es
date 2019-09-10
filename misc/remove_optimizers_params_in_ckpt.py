@@ -9,7 +9,7 @@ sys.path.append('..')
 
 import os
 import tensorflow as tf
-from model import YoloV3
+from model import yolov3
 
 # params
 ckpt_path = ''
@@ -19,7 +19,7 @@ if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 image = tf.placeholder(tf.float32, [1, 416, 416, 3])
-yolo_model = YoloV3(class_num, None)
+yolo_model = yolov3(class_num, None)
 with tf.variable_scope('yolov3'):
     pred_feature_maps = yolo_model.forward(image)
 

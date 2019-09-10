@@ -1,4 +1,5 @@
 # coding: utf-8
+
 from __future__ import division, print_function
 
 import numpy as np
@@ -8,18 +9,14 @@ from collections import Counter
 from utils.nms_utils import cpu_nms, gpu_nms
 from utils.data_utils import parse_line
 
-"""
-各种评估方法
-"""
-
 
 def calc_iou(pred_boxes, true_boxes):
-    """
-    高效方式计算交并比（numpy广播）
-    :param pred_boxes: [N, 4]
-    :param true_boxes: [V, 4]
-    :return: [N, V]
-    """
+    '''
+    Maintain an efficient way to calculate the ios matrix using the numpy broadcast tricks.
+    shape_info: pred_boxes: [N, 4]
+                true_boxes: [V, 4]
+    return: IoU matrix: shape: [N, V]
+    '''
 
     # [N, 1, 4]
     pred_boxes = np.expand_dims(pred_boxes, -2)
@@ -49,17 +46,10 @@ def calc_iou(pred_boxes, true_boxes):
 
 
 def evaluate_on_cpu(y_pred, y_true, num_classes, calc_now=True, max_boxes=50, score_thresh=0.5, iou_thresh=0.5):
-    """
-    CPU计算一个batch上的y_pred and y_true，并计算当前batch上的recall(召回率) precision（正确率）
-    :param y_pred:
-    :param y_true:
-    :param num_classes:
-    :param calc_now:
-    :param max_boxes:
-    :param score_thresh:
-    :param iou_thresh:
-    :return:
-    """
+    '''
+    Given y_pred and y_true of a batch of data, get the recall and precision of the current batch.
+    '''
+
     num_images = y_true[0].shape[0]
     true_labels_dict = {i: 0 for i in range(num_classes)}  # {class: count}
     pred_labels_dict = {i: 0 for i in range(num_classes)}
@@ -113,8 +103,8 @@ def evaluate_on_cpu(y_pred, y_true, num_classes, calc_now=True, max_boxes=50, sc
         if pred_labels_list == []:
             continue
 
-        #
-        # 计算IoU[N, V]
+        # calc iou
+        # [N, V]
         iou_matrix = calc_iou(pred_boxes, true_boxes)
         # [N]
         max_iou_idx = np.argmax(iou_matrix, axis=-1)
@@ -150,19 +140,10 @@ def evaluate_on_cpu(y_pred, y_true, num_classes, calc_now=True, max_boxes=50, sc
 
 
 def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred, y_true, num_classes, iou_thresh=0.5, calc_now=True):
-    """
-    GPU计算一个batch上的y_pred and y_true，并计算当前batch上的recall(召回率) precision（正确率）
-    :param sess:
-    :param gpu_nms_op: GPU IoU 方法
-    :param pred_boxes_flag:
-    :param pred_scores_flag:
-    :param y_pred:
-    :param y_true:
-    :param num_classes:
-    :param iou_thresh: IoU预测值
-    :param calc_now:
-    :return:
-    """
+    '''
+    Given y_pred and y_true of a batch of data, get the recall and precision of the current batch.
+    This function will perform gpu operation on the GPU.
+    '''
 
     num_images = y_true[0].shape[0]
     true_labels_dict = {i: 0 for i in range(num_classes)}  # {class: count}
@@ -209,11 +190,9 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
         # pred_confs: [N]
         # pred_labels: [N]
         # N: Detected box number of the current image
-        pred_boxes, pred_confs, pred_labels = sess.run(
-            gpu_nms_op,
-            feed_dict={pred_boxes_flag: pred_boxes,
-                       pred_scores_flag: pred_confs * pred_probs}
-        )
+        pred_boxes, pred_confs, pred_labels = sess.run(gpu_nms_op,
+                                                       feed_dict={pred_boxes_flag: pred_boxes,
+                                                                  pred_scores_flag: pred_confs * pred_probs})
         # len: N
         pred_labels_list = [] if pred_labels is None else pred_labels.tolist()
         if pred_labels_list == []:
@@ -256,16 +235,11 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
 
 
 def get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, image_ids, y_pred):
-    """
-    获取输入图片额bbox和类别
-    :param sess:
-    :param gpu_nms_op:
-    :param pred_boxes_flag:
-    :param pred_scores_flag:
-    :param image_ids:
-    :param y_pred: 2d list.
-    :return:
-    """
+    '''
+    Given the y_pred of an input image, get the predicted bbox and label info.
+    return:
+        pred_content: 2d list.
+    '''
     image_id = image_ids[0]
 
     # keep the first dimension 1
@@ -288,16 +262,12 @@ def get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, image_ids
 
 
 gt_dict = {}  # key: img_id, value: gt object list
-
-
 def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
-    """
+    '''
     parse and re-organize the gt info.
-    :param gt_filename:
-    :param target_img_size:
-    :param letterbox_resize:
-    :return:  gt_dict: dict. Each key is a img_id, the value is the gt bboxes in the corresponding img.
-    """
+    return:
+        gt_dict: dict. Each key is a img_id, the value is the gt bboxes in the corresponding img.
+    '''
 
     global gt_dict
 
@@ -336,6 +306,8 @@ def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
     return gt_dict
 
 
+# The following two functions are modified from FAIR's Detectron repo to calculate mAP:
+# https://github.com/facebookresearch/Detectron/blob/master/detectron/datasets/voc_eval.py
 def voc_ap(rec, prec, use_07_metric=False):
     """Compute VOC AP given precision and recall. If use_07_metric is true, uses
     the VOC 07 11-point method (default:False).

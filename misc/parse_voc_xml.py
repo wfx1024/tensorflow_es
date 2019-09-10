@@ -91,6 +91,6 @@ def gen_train_txt(txt_path):
     f.close()
 
 
-gen_train_txt('sample.txt')
+gen_train_txt('train.txt')
 gen_test_txt('val.txt')
 
