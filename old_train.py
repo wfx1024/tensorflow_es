@@ -1,7 +1,7 @@
 # coding: utf-8
 
 
-from utils.dataset_tricks import build_train_dataset, build_val_dataset, create_iterator
+from utils.dataset_tricks import create_iterator
 import tensorflow as tf
 from net.yolov3 import YoloV3
 import config.setting as setting
@@ -24,24 +24,17 @@ gpu_nms_op = gpu_nms(pred_boxes_flag, pred_scores_flag, setting.class_num, train
 
 train_init_op, val_init_op, image_ids, image, y_true = create_iterator()
 
-
-with tf.Session() as sess:
-    image = sess.run(image)
-
-
 ##################
 # Model definition
 ##################
-yolo_model = YoloV3(is_training=True)
 
 with tf.variable_scope('yolov3'):
-    feature_map_1, feature_map_2, feature_map_3, loss, boxes, scores, labels = yolo_model.sess.run(
-        [yolo_model.feature_map_1, yolo_model.feature_map_2, yolo_model.feature_map_3,
-         yolo_model.loss, yolo_model.boxes, yolo_model.scores, yolo_model.labels],
-        feed_dict={yolo_model.input_data: image}
-    )
-pred_feature_maps = feature_map_1, feature_map_2, feature_map_3
-y_pred = boxes, scores, labels
+    yolo_model = YoloV3(is_training=True)
+
+yolo_model.compute_loss(y_true)
+loss = yolo_model.loss
+pred_feature_maps = yolo_model.feature_map_1, yolo_model.feature_map_2, yolo_model.feature_map_3
+y_pred = yolo_model.boxes, yolo_model.scores, yolo_model.labels
 
 l2_loss = tf.losses.get_regularization_loss()
 
@@ -111,9 +104,10 @@ with tf.Session() as sess:
         loss_total, loss_xy, loss_wh, loss_conf, loss_class = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
         for i in trange(train_setting.train_batch_num):
-            _, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
-                [train_op, merged, y_pred, y_true, loss, global_step, learning_rate],
-                feed_dict={is_training: True})
+            image, __y_true = sess.run(image, y_true)
+            _, summary, __y_pred, __loss, __global_step, __lr = sess.run(
+                [train_op, merged, y_pred, loss, global_step, learning_rate],
+                feed_dict={yolo_model.input_data: image})
 
             writer.add_summary(summary, global_step=__global_step)
 
@@ -155,8 +149,11 @@ with tf.Session() as sess:
             val_preds = []
 
             for j in trange(train_setting.val_img_cnt):
-                __image_ids, __y_pred, __loss = sess.run([image_ids, y_pred, loss],
-                                                         feed_dict={is_training: False})
+                __image_ids, __y_true, image = sess.run(image_ids, image, y_true)
+                __y_pred, __loss = sess.run(
+                    [y_pred, loss],
+                    feed_dict={yolo_model.input_data: image}
+                )
                 pred_content = get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __image_ids, __y_pred)
                 val_preds.extend(pred_content)
                 val_loss_total.update(__loss[0])
