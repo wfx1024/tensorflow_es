@@ -7,21 +7,32 @@ import random
 
 
 def get_color_table(class_num, seed=2):
+    """
+    多个类别生成不同颜色
+    :param class_num: 类别数量
+    :param seed:
+    :return:
+    """
     random.seed(seed)
     color_table = {}
     for i in range(class_num):
-        color_table[i] = [random.randint(0, 255) for _ in range(3)]
+        rgb = [0, 0, 0]
+        while rgb[0] < 100 and rgb[1] < 100 and rgb[2] < 100:  # 不出暗色
+            rgb = [random.randint(0, 255) for _ in range(3)]
+        color_table[i] = rgb
     return color_table
 
 
 def plot_one_box(img, coord, label=None, color=None, line_thickness=None):
-    '''
-    coord: [x_min, y_min, x_max, y_max] format coordinates.
-    img: img to plot on.
-    label: str. The label name.
-    color: int. color index.
-    line_thickness: int. rectangle line thickness.
-    '''
+    """
+    画出bbox方法
+    :param img: 画框图片
+    :param coord: [x_min, y_min, x_max, y_max] 格式化坐标
+    :param label: 标签名
+    :param color: 颜色index
+    :param line_thickness: int. 框厚度.
+    :return:
+    """
     tl = line_thickness or int(round(0.002 * max(img.shape[0:2])))  # line thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(coord[0]), int(coord[1])), (int(coord[2]), int(coord[3]))

@@ -16,13 +16,16 @@ from utils.nms_utils import gpu_nms
 
 from model import yolov3
 
-# setting loggers
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s',
-                    datefmt='%a, %d %b %Y %H:%M:%S', filename=args.progress_log_path, filemode='w')
+# log
+logging.basicConfig(
+    level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s',
+    datefmt='%a, %d %b %Y %H:%M:%S', filename=args.progress_log_path, filemode='w'
+)
 
-# setting placeholders
+# placeholders
 is_training = tf.placeholder(tf.bool, name="phase_train")
 handle_flag = tf.placeholder(tf.string, [], name='iterator_handle_flag')
+
 # register the gpu nms operation here for the following evaluation scheme
 pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
 pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])

@@ -1,30 +1,21 @@
 # coding=utf-8
-# for better understanding about yolov3 architecture, refer to this website (in Chinese):
-# https://blog.csdn.net/leviopku/article/details/82660381
-
 from __future__ import division, print_function
-
 import tensorflow as tf
 slim = tf.contrib.slim
-
 from utils.layer_utils import conv2d, darknet53_body, yolo_block, upsample_layer
 
+
 class yolov3(object):
-
+    """
+    Yolo v3
+    """
     def __init__(self, class_num, anchors, use_label_smooth=False, use_focal_loss=False, batch_norm_decay=0.999, weight_decay=5e-4, use_static_shape=True):
-
-        # self.anchors = [[10, 13], [16, 30], [33, 23],
-                         # [30, 61], [62, 45], [59,  119],
-                         # [116, 90], [156, 198], [373,326]]
         self.class_num = class_num
         self.anchors = anchors
         self.batch_norm_decay = batch_norm_decay
         self.use_label_smooth = use_label_smooth
         self.use_focal_loss = use_focal_loss
         self.weight_decay = weight_decay
-        # inference speed optimization
-        # if `use_static_shape` is True, use tensor.get_shape(), otherwise use tf.shape(tensor)
-        # static_shape is slightly faster
         self.use_static_shape = use_static_shape
 
     def forward(self, inputs, is_training=False, reuse=False):
@@ -80,11 +71,12 @@ class yolov3(object):
             return feature_map_1, feature_map_2, feature_map_3
 
     def reorg_layer(self, feature_map, anchors):
-        '''
-        feature_map: a feature_map from [feature_map_1, feature_map_2, feature_map_3] returned
-            from `forward` function
-        anchors: shape: [3, 2]
-        '''
+        """
+        转移层，特征融合(Fine-Grained Features)，把高分辨率的浅层特征连接到低分辨率的生成特征，堆积在不同channel上。
+        :param feature_map_i: 不同尺度的 feature map，
+        :param anchors: 3个anchor，shape=3,2
+        :return:
+        """
         # NOTE: size in [h, w] format! don't get messed up!
         grid_size = feature_map.get_shape().as_list()[1:3] if self.use_static_shape else tf.shape(feature_map)[1:3]  # [13, 13]
         # the downscale ratio in height and weight
@@ -218,8 +210,10 @@ class yolov3(object):
         # the calculation of ignore mask if referred from
         # https://github.com/pjreddie/darknet/blob/master/src/yolo_layer.c#L179
         ignore_mask = tf.TensorArray(tf.float32, size=0, dynamic_size=True)
+
         def loop_cond(idx, ignore_mask):
             return tf.less(idx, tf.cast(N, tf.int32))
+
         def loop_body(idx, ignore_mask):
             # shape: [13, 13, 3, 4] & [13, 13, 3]  ==>  [V, 4]
             # V: num of true gt box of each image in a batch
@@ -302,15 +296,14 @@ class yolov3(object):
         class_loss = tf.reduce_sum(class_loss) / N
 
         return xy_loss, wh_loss, conf_loss, class_loss
-    
 
     def box_iou(self, pred_boxes, valid_true_boxes):
-        '''
-        param:
-            pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
-            valid_true: [V, 4]
-        '''
-
+        """
+        计算交并比
+        :param pred_boxes: [13, 13, 3, 4], (center_x, center_y, w, h)
+        :param valid_true_boxes: [V, 4]
+        :return:
+        """
         # [13, 13, 3, 2]
         pred_box_xy = pred_boxes[..., 0:2]
         pred_box_wh = pred_boxes[..., 2:4]
