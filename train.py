@@ -41,7 +41,6 @@ def build_optimizer(learning_rate, loss, l2_loss, update_vars, global_step):
     生成优化器
     :return:
     """
-    # 生成优化器
     optimizer = config_optimizer(args.optimizer_name, learning_rate)
     # BN操作
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -109,19 +108,8 @@ def train():
         saver_to_save = tf.train.Saver()
         saver_best = tf.train.Saver()
 
+    # 优化器
     train_op = build_optimizer(learning_rate, loss, l2_loss, update_vars, global_step)
-
-    # # 生成优化器
-    # optimizer = config_optimizer(args.optimizer_name, learning_rate)
-    # # BN操作
-    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    # with tf.control_dependencies(update_ops):
-    #     # 梯度下降
-    #     gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)  # 只优化update_vars中参数
-    #     # 应用gradient clip, 防止梯度爆炸
-    #     clip_grad_var = [gv if gv[0] is None else [
-    #           tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
-    #     train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
     if args.save_optimizer:
         saver_to_save = tf.train.Saver()
@@ -137,6 +125,7 @@ def train():
 
         print('\n\033[32m----------- start to train -----------\n')
         best_mAP = -np.Inf
+
         for epoch in range(args.total_epoches):  # epoch
             print('\033[32m---------epoch:{}---------'.format(epoch))
             sess.run(train_init_op)  # 初始化训练集dataset
@@ -144,13 +133,13 @@ def train():
             loss_total, loss_xy, loss_wh, loss_conf, loss_class\
                 = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
-            for i in trange(args.train_batch_num):
-                print('\n\033[32m-----train batch:{}----'.format(i))
+            for i in trange(args.train_batch_num):  # batch
+                # print('\n\033[32m-----train batch:{}----'.format(i))
                 # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
                 _, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
                     [train_op, merged, y_pred, y_true, loss, global_step, learning_rate],
                     feed_dict={is_training: True})
-                print('\033[32m-global_step:{}-'.format(__global_step))
+                # print('\033[32m-global_step:{}-'.format(__global_step))
                 writer.add_summary(summary, global_step=__global_step)
 
                 # 更新误差
@@ -165,11 +154,11 @@ def train():
                     # 召回率,精确率
                     recall, precision = evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __y_pred, __y_true, args.class_num, args.nms_threshold)
 
-                    info = "Epoch: {}, global_step: {} | loss: total: {:.2f}, "\
+                    info = "epoch:{},global_step:{} | loss_total:{:.2f}, "\
                         .format(epoch, int(__global_step), loss_total.average)
-                    info += "xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f} | "\
+                    info += "xy:{:.2f},wh:{:.2f},conf:{:.2f},class:{:.2f} | "\
                         .format(loss_xy.average, loss_wh.average, loss_conf.average, loss_class.average)
-                    info += 'Last batch: rec: {:.3f}, prec: {:.3f} | lr: {:.5g}'\
+                    info += 'last batch:rec:{:.3f},prec:{:.3f} | lr:{:.5g}'\
                         .format(recall, precision, __lr)
                     print(info)
 
@@ -181,14 +170,19 @@ def train():
 
             # 保存模型
             if epoch % args.save_epoch == 0 and epoch > 0:
-                print('\033[32m-loss_total.average{}'.format(loss_total.average))
                 if loss_total.average <= 2.:
                     print('\033[32m ----------- Begin sotre weights-----------')
-                    saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.average, __lr))
+                    print('\033[32m-loss_total.average{}'.format(loss_total.average))
+                    saver_to_save.save(
+                        sess,
+                        args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(
+                            epoch, int(__global_step), loss_total.average, __lr
+                        )
+                    )
                     print('\033[32m ----------- Begin sotre weights  -----------')
 
             #  验证集评估评估方法
-            if epoch % args.val_evaluation_epoch == 0 and epoch >= args.warm_up_epoch:
+            if epoch % args.val_evaluation_epoch == 0 and epoch >= args.warm_up_epoch:  # 要过了warm up
                 sess.run(val_init_op)
 
                 val_loss_total, val_loss_xy, val_loss_wh, val_loss_conf, val_loss_class = \
@@ -196,7 +190,7 @@ def train():
 
                 val_preds = []
 
-                for _ in trange(args.val_img_cnt):
+                for _ in trange(args.val_img_cnt):  # 在整个验证集上验证
                     __image_ids, __y_pred, __loss = sess.run(
                         [image_ids, y_pred, loss], feed_dict={is_training: False}
                     )
@@ -204,30 +198,36 @@ def train():
                         sess, gpu_nms_op, pred_boxes_flag,
                         pred_scores_flag, __image_ids, __y_pred
                     )
+
                     val_preds.extend(pred_content)
+                    # 更新误差
                     val_loss_total.update(__loss[0])
                     val_loss_xy.update(__loss[1])
                     val_loss_wh.update(__loss[2])
                     val_loss_conf.update(__loss[3])
                     val_loss_class.update(__loss[4])
 
-                # 计算mAP
+                # 计算验证集mAP
                 rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
                 gt_dict = parse_gt_rec(args.val_file, args.img_size, args.letterbox_resize)
 
                 info = 'Epoch: {}, global_step: {}, lr: {:.6g} \n'.format(epoch, __global_step, __lr)
 
-                for ii in range(args.class_num):
-                    npos, nd, rec, prec, ap = voc_eval(gt_dict, val_preds, ii, iou_thres=args.eval_threshold, use_07_metric=args.use_voc_07_metric)
-                    info += 'EVAL: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(ii, rec, prec, ap)
+                for j in range(args.class_num):
+                    npos, nd, rec, prec, ap = voc_eval(
+                        gt_dict, val_preds, j, iou_thres=args.eval_threshold, use_07_metric=args.use_voc_07_metric
+                    )
+                    info += 'EVAL: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(j, rec, prec, ap)
                     rec_total.update(rec, npos)
                     prec_total.update(prec, nd)
                     ap_total.update(ap, 1)
 
                 mAP = ap_total.average
-                info += 'EVAL: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n'.format(rec_total.average, prec_total.average, mAP)
-                info += 'EVAL: loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f}\n'.format(
-                    val_loss_total.average, val_loss_xy.average, val_loss_wh.average, val_loss_conf.average, val_loss_class.average)
+                info += 'EVAL: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n'\
+                    .format(rec_total.average, prec_total.average, mAP)
+                info += 'EVAL: loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f}\n'\
+                    .format(val_loss_total.average, val_loss_xy.average,
+                            val_loss_wh.average, val_loss_conf.average, val_loss_class.average)
 
                 print(info)
                 logging.info(info)
@@ -235,8 +235,9 @@ def train():
                 if mAP > best_mAP:
                     best_mAP = mAP
                     saver_best.save(
-                        sess, args.save_dir + 'best_model_Epoch_{}_step_{}_mAP_{:.4f}_loss_{:.4f}_lr_{:.7g}'
-                              .format( epoch, int(__global_step), best_mAP, val_loss_total.average, __lr)
+                        sess,
+                        args.save_dir + 'best_model_Epoch_{}_step_{}_mAP_{:.4f}_loss_{:.4f}_lr_{:.7g}'
+                        .format(epoch, int(__global_step), best_mAP, val_loss_total.average, __lr)
                     )
 
                 writer.add_summary(make_summary('evaluation/val_mAP', mAP), global_step=epoch)

@@ -1,23 +1,19 @@
 # coding: utf-8
 
 from __future__ import division, print_function
-
 import numpy as np
-import cv2
 from collections import Counter
-
-from utils.nms_utils import cpu_nms, gpu_nms
+from utils.nms_utils import cpu_nms
 from utils.data_utils import parse_line
 
 
 def calc_iou(pred_boxes, true_boxes):
-    '''
-    Maintain an efficient way to calculate the ios matrix using the numpy broadcast tricks.
-    shape_info: pred_boxes: [N, 4]
-                true_boxes: [V, 4]
-    return: IoU matrix: shape: [N, V]
-    '''
-
+    """
+    计算IoU，Maintain an efficient way to calculate the ios matrix using the numpy broadcast tricks.
+    :param pred_boxes: [N, 4]
+    :param true_boxes: [V, 4]
+    :return: IoU matrix: shape: [N, V]
+    """
     # [N, 1, 4]
     pred_boxes = np.expand_dims(pred_boxes, -2)
     # [1, V, 4]
@@ -235,11 +231,16 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
 
 
 def get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, image_ids, y_pred):
-    '''
+    """
     Given the y_pred of an input image, get the predicted bbox and label info.
-    return:
-        pred_content: 2d list.
-    '''
+    :param sess:
+    :param gpu_nms_op:
+    :param pred_boxes_flag:
+    :param pred_scores_flag:
+    :param image_ids:
+    :param y_pred:
+    :return: pred_content: 2d list.
+    """
     image_id = image_ids[0]
 
     # keep the first dimension 1
@@ -247,9 +248,12 @@ def get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, image_ids
     pred_confs = y_pred[1][0:1]
     pred_probs = y_pred[2][0:1]
 
-    boxes, scores, labels = sess.run(gpu_nms_op,
-                                     feed_dict={pred_boxes_flag: pred_boxes,
-                                                pred_scores_flag: pred_confs * pred_probs})
+    boxes, scores, labels = sess.run(
+        gpu_nms_op, feed_dict={
+            pred_boxes_flag: pred_boxes,
+            pred_scores_flag: pred_confs * pred_probs
+        }
+    )
 
     pred_content = []
     for i in range(len(labels)):
@@ -262,13 +266,16 @@ def get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, image_ids
 
 
 gt_dict = {}  # key: img_id, value: gt object list
-def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
-    '''
-    parse and re-organize the gt info.
-    return:
-        gt_dict: dict. Each key is a img_id, the value is the gt bboxes in the corresponding img.
-    '''
 
+
+def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
+    """
+    parse and re-organize the gt info.
+    :param gt_filename:
+    :param target_img_size:
+    :param letterbox_resize:
+    :return: gt_dict: dict. Each key is a img_id, the value is the gt bboxes in the corresponding img.
+    """
     global gt_dict
 
     if not gt_dict:
@@ -291,26 +298,29 @@ def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
                         dw = int((new_width - resize_w) / 2)
                         dh = int((new_height - resize_h) / 2)
 
-                        objects.append([x_min * resize_ratio + dw,
-                                        y_min * resize_ratio + dh,
-                                        x_max * resize_ratio + dw,
-                                        y_max * resize_ratio + dh,
-                                        label])
+                        objects.append(
+                            [x_min * resize_ratio + dw, y_min * resize_ratio + dh,
+                             x_max * resize_ratio + dw, y_max * resize_ratio + dh, label]
+                        )
                     else:
-                        objects.append([x_min * new_width / ori_width,
-                                        y_min * new_height / ori_height,
-                                        x_max * new_width / ori_width,
-                                        y_max * new_height / ori_height,
-                                        label])
+                        objects.append(
+                            [x_min * new_width / ori_width, y_min * new_height / ori_height,
+                             x_max * new_width / ori_width, y_max * new_height / ori_height, label]
+                        )
                 gt_dict[img_id] = objects
     return gt_dict
 
 
 # The following two functions are modified from FAIR's Detectron repo to calculate mAP:
-# https://github.com/facebookresearch/Detectron/blob/master/detectron/datasets/voc_eval.py
+
 def voc_ap(rec, prec, use_07_metric=False):
-    """Compute VOC AP given precision and recall. If use_07_metric is true, uses
+    """
+    Compute VOC AP given precision and recall. If use_07_metric is true, uses
     the VOC 07 11-point method (default:False).
+    :param rec:
+    :param prec:
+    :param use_07_metric:
+    :return:
     """
     if use_07_metric:
         # 11 point metric
@@ -341,9 +351,15 @@ def voc_ap(rec, prec, use_07_metric=False):
 
 
 def voc_eval(gt_dict, val_preds, classidx, iou_thres=0.5, use_07_metric=False):
-    '''
+    """
     Top level function that does the PASCAL VOC evaluation.
-    '''
+    :param gt_dict:
+    :param val_preds:
+    :param classidx:
+    :param iou_thres:
+    :param use_07_metric:
+    :return:
+    """
     # 1.obtain gt: extract all gt objects for this class
     class_recs = {}
     npos = 0

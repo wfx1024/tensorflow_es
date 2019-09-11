@@ -67,18 +67,18 @@ restore_exclude = [
 # 选择想要fine tune的部分, None则fine-tune整个模型
 update_part = ['yolov3/yolov3_head']
 
-"""训练策略"""
-multi_scale_train = True  # multi-scale, 图片大小 [320, 320] 到 [640, 640]
-use_label_smooth = True  # class label smoothing
+"""训练策略Tricks"""
+multi_scale_train = True  # 是否使用multi-scale, 图片大小 [320, 320] 到 [640, 640]
+use_label_smooth = True  # 是否使用label smoothing(gt分布混合)
 use_focal_loss = True  # focal loss on the conf loss.
-use_mix_up = True  # mix up data augmentation strategy.
-use_warm_up = True  # warm up 防止梯度爆炸
-warm_up_epoch = 3  # Warm up 训练 epoches. 如果梯度爆炸，设置一个大的值
+use_mix_up = True  # 是否用mix up(数据增强, 抗扰动)
+use_warm_up = True  # 是否使用warm up(预热训练)，先使用小学习率，一定epoch后再用大的学习率
+warm_up_epoch = 3  # warm up训练多少epoch
 
 """验证参数"""
 # nms
 nms_threshold = 0.45  # nms 时的iou
-score_threshold = 0.01 # nms类别置信度, i.e. score = pred_confs * pred_probs. set lower for higher recall.
+score_threshold = 0.01  # nms类别置信度, score = pred_confs * pred_probs. set lower for higher recall.
 nms_topk = 150  # keep at most nms_topk outputs after nms
 # mAP eval
 eval_threshold = 0.5  # the iou threshold applied in mAP evaluation
@@ -88,9 +88,9 @@ use_voc_07_metric = False  # whether to use voc 2007 evaluation metric, i.e. the
 anchors = parse_anchors(anchor_path)
 classes = read_class_names(class_name_path)
 class_num = len(classes)
-train_img_cnt = len(open(train_file, 'r').readlines())
-val_img_cnt = len(open(val_file, 'r').readlines())
-train_batch_num = int(math.ceil(float(train_img_cnt) / batch_size))
+train_img_cnt = len(open(train_file, 'r').readlines())  # 训练集样本数
+val_img_cnt = len(open(val_file, 'r').readlines())  # 验证集样本数
+train_batch_num = int(math.ceil(float(train_img_cnt) / batch_size))  # batch数
 
 lr_decay_freq = int(train_batch_num * lr_decay_epoch)
 pw_boundaries = [float(i) * train_batch_num + global_step for i in pw_boundaries]
