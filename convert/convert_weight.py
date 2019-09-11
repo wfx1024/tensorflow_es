@@ -1,16 +1,14 @@
 # coding: utf-8
-# for more details about the yolo darknet weights file, refer to
-# https://itnext.io/implementing-yolo-v3-in-tensorflow-tf-slim-c3c55ff59dbe
 
 from __future__ import division, print_function
-
-import os
-import sys
 import tensorflow as tf
 import numpy as np
-
 from model import yolov3
 from utils.misc_utils import parse_anchors
+
+"""
+weights压缩包解析
+"""
 
 num_class = 80
 img_size = 416
