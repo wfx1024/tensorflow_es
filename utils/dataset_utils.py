@@ -1,6 +1,6 @@
 # coding: utf-8
 import tensorflow as tf
-from data_utils import get_batch_data
+from utils.data_utils import get_batch_data
 import args as args
 
 
@@ -48,7 +48,7 @@ def create_iterator():
     创建迭代器
     :return:
     """
-    print('\n----------- Begin building dataset  -----------\n')
+    print('\n\033[32m----------- Begin building dataset  -----------\n')
     train_dataset = build_train_dataset()  # 训练集
     val_dataset = build_val_dataset()  # 验证集
     iterator = tf.data.Iterator.from_structure(train_dataset.output_types, train_dataset.output_shapes)
@@ -64,5 +64,5 @@ def create_iterator():
     image.set_shape([None, None, None, 3])
     for y in y_true:
         y.set_shape([None, None, None, None, None])
-    print('\n----------- Finish building dataset  -----------\n')
+    print('\n\033[32m----------- Finish building dataset  -----------\n')
     return train_init_op, val_init_op, image_ids, image, y_true

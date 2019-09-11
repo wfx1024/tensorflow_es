@@ -8,7 +8,7 @@ import logging
 from tqdm import trange
 import args
 
-from dataset_utils import create_iterator
+from utils.dataset_utils import create_iterator
 from utils.misc_utils import shuffle_and_overwrite, make_summary, config_learning_rate, config_optimizer, AverageMeter
 from utils.eval_utils import evaluate_on_cpu, evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_rec
 from utils.nms_utils import gpu_nms
@@ -99,27 +99,30 @@ if args.save_optimizer:
 
 with tf.Session() as sess:
     sess.run([tf.global_variables_initializer(), tf.local_variables_initializer()])
+    print('\033[32m----------- Begin resotre weights  -----------')
     saver_to_restore.restore(sess, args.restore_path)
+    print('\033[32m----------- Finish resotre weights  -----------')
+
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter(args.log_dir, sess.graph)
 
-    print('\n----------- start to train -----------\n')
+    print('\n\033[32m----------- start to train -----------\n')
 
     best_mAP = -np.Inf
-
-    for epoch in range(args.total_epoches):
-
-        sess.run(train_init_op)
-
+    for epoch in range(args.total_epoches):  # epoch
+        print('\033[32m---------epoch:{}---------'.format(epoch))
+        sess.run(train_init_op)  # 初始化训练集dataset
         # 初始化五种损失函数
         loss_total, loss_xy, loss_wh, loss_conf, loss_class\
             = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
         for i in trange(args.train_batch_num):
+            print('\n\033[32m-----train batch:{}----'.format(i))
+            # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
             _, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
                 [train_op, merged, y_pred, y_true, loss, global_step, learning_rate],
                 feed_dict={is_training: True})
-
+            print('\033[32m-global_step:{}-'.format(__global_step))
             writer.add_summary(summary, global_step=__global_step)
 
             # 更新误差
@@ -129,24 +132,26 @@ with tf.Session() as sess:
             loss_conf.update(__loss[3], len(__y_pred[0]))
             loss_class.update(__loss[4], len(__y_pred[0]))
 
+            # 验证集上验证
             if __global_step % args.train_evaluation_step == 0 and __global_step > 0:
                 # 召回率,精确率
                 recall, precision = evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __y_pred, __y_true, args.class_num, args.nms_threshold)
 
-                info = "Epoch: {}, global_step: {} | loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f} | ".format(
-                        epoch, int(__global_step), loss_total.average, loss_xy.average, loss_wh.average, loss_conf.average, loss_class.average)
-                info += 'Last batch: rec: {:.3f}, prec: {:.3f} | lr: {:.5g}'.format(recall, precision, __lr)
+                info = "Epoch: {}, global_step: {} | loss: total: {:.2f}, "\
+                    .format(epoch, int(__global_step), loss_total.average)
+                info += "xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f} | "\
+                    .format(loss_xy.average, loss_wh.average, loss_conf.average, loss_class.average)
+                info += 'Last batch: rec: {:.3f}, prec: {:.3f} | lr: {:.5g}'\
+                    .format(recall, precision, __lr)
                 print(info)
-                logging.info(info)
 
                 writer.add_summary(make_summary('evaluation/train_batch_recall', recall), global_step=__global_step)
                 writer.add_summary(make_summary('evaluation/train_batch_precision', precision), global_step=__global_step)
 
                 if np.isnan(loss_total.average):
-                    print('****' * 10)
                     raise ArithmeticError('梯度爆炸，修改参数后重新训练')
 
-        # NOTE: this is just demo. You can set the conditions when to save the weights.
+        # 保存模型
         if epoch % args.save_epoch == 0 and epoch > 0:
             if loss_total.average <= 2.:
                 saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.average, __lr))

@@ -126,7 +126,7 @@ class yolov3(object):
             # prob_logits: [N, 13*13*3, class_num]
             return boxes, conf_logits, prob_logits
 
-        print("Begin building feature map to bboxes op...")
+        print("\033[32mBegin building feature map to bboxes op...]")
         feature_map_1, feature_map_2, feature_map_3 = feature_maps
         feature_map_anchors = [
             (feature_map_1, self.anchors[6:9]),  # (116,90), (156,198), (373,326)
@@ -160,7 +160,7 @@ class yolov3(object):
         x_max = center_x + width / 2
         y_max = center_y + height / 2
         boxes = tf.concat([x_min, y_min, x_max, y_max], axis=-1)
-        print("Finish building feature map to bboxes op...")
+        print("\033[32mFinish building feature map to bboxes op...]")
         return boxes, confs, probs
     
     def loss_layer(self, feature_map_i, y_true, anchors):
@@ -323,7 +323,7 @@ class yolov3(object):
         计算损失
         :return:
         """
-        print("Begin building compute loss op...")
+        print("\033[32mBegin building compute loss op...]")
         loss_xy, loss_wh, loss_conf, loss_class = 0., 0., 0., 0.
         anchor_group = [self.anchors[6:9], self.anchors[3:6], self.anchors[0:3]]
 
@@ -335,5 +335,5 @@ class yolov3(object):
             loss_conf += result[2]
             loss_class += result[3]
         total_loss = loss_xy + loss_wh + loss_conf + loss_class
-        print("Finish building compute loss op...")
+        print("\033[32mFinish building compute loss op...]")
         return [total_loss, loss_xy, loss_wh, loss_conf, loss_class]
