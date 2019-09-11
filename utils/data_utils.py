@@ -192,7 +192,7 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
     :return:
     """
     global iter_cnt
-    # multi_scale training
+    # multi_scale 训练
     if multi_scale and mode == 'train':
         random.seed(iter_cnt // interval)
         random_img_size = [[x * 32, x * 32] for x in range(10, 20)]
@@ -201,7 +201,7 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
 
     img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = [], [], [], [], []
 
-    # mix up strategy
+    # mix up
     if mix_up and mode == 'train':
         mix_lines = []
         batch_line = batch_line.tolist()
