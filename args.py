@@ -38,7 +38,7 @@ prefetech_buffer = 5  # 每个butch取的图片数
 
 """学习率和优化器"""
 optimizer_name = 'momentum'  # 优化器策略[sgd, momentum, adam, rmsprop]
-save_optimizer = True  # 是否保存优化器checkpoint文件
+save_optimizer = False  # 是否保存优化optimizer参数
 learning_rate_init = 1e-4
 lr_type = 'piecewise'  # Chosen from [fixed, exponential, cosine_decay, cosine_decay_restart, piecewise]
 lr_decay_epoch = 5  # Epochs after which learning rate decays. Int or float. Used when chosen `exponential` and `cosine_decay_restart` lr_type.
@@ -64,8 +64,7 @@ restore_exclude = [
     'yolov3/yolov3_head/Conv_22'
 ]
 
-# Choose the parts you want to finetune. List form.
-# Set to None to train the whole model.
+# 选择想要fine tune的部分, None则fine-tune整个模型
 update_part = ['yolov3/yolov3_head']
 
 """训练策略"""

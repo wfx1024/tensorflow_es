@@ -9,8 +9,8 @@ from tqdm import trange
 import args
 
 from utils.dataset_utils import create_iterator
-from utils.misc_utils import shuffle_and_overwrite, make_summary, config_learning_rate, config_optimizer, AverageMeter
-from utils.eval_utils import evaluate_on_cpu, evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_rec
+from utils.misc_utils import make_summary, config_learning_rate, config_optimizer, AverageMeter
+from utils.eval_utils import evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_rec
 from utils.nms_utils import gpu_nms
 
 from model import yolov3
@@ -47,7 +47,7 @@ y_pred = yolo_model.predict(pred_feature_maps)
 
 l2_loss = tf.losses.get_regularization_loss()
 
-# setting restore parts and vars to update
+# 加载除去yolov3/yolov3_head下Conv_6、Conv_14、Conv_22
 saver_to_restore = tf.train.Saver(
     var_list=tf.contrib.framework.get_variables_to_restore(
         include=args.restore_include, exclude=args.restore_exclude
@@ -76,6 +76,7 @@ else:
     learning_rate = config_learning_rate(args, global_step)
 tf.summary.scalar('learning_rate', learning_rate)
 
+# 是否要保存优化器的参数
 if not args.save_optimizer:
     saver_to_save = tf.train.Saver()
     saver_best = tf.train.Saver()
@@ -86,14 +87,13 @@ optimizer = config_optimizer(args.optimizer_name, learning_rate)
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 with tf.control_dependencies(update_ops):
     # 梯度下降
-    gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)
+    gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)  # 只优化update_vars中参数
     # 应用gradient clip, 防止梯度爆炸
     clip_grad_var = [gv if gv[0] is None else [
           tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
     train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
 if args.save_optimizer:
-    # print('\033[0m保存optimizer变量到checkpoint文件!后续fine-tuning时restore global_step')
     saver_to_save = tf.train.Saver()
     saver_best = tf.train.Saver()
 

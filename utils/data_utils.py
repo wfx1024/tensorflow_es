@@ -117,7 +117,7 @@ def process_box(boxes, labels, img_size, class_num, anchors):
 
 def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
     """
-    解析每行数据
+    解析每行数据到y_true
     :param line: a line from the training/test txt file
     :param class_num: totol class nums.
     :param img_size:  the size of image to be resized to. [width, height] format.
