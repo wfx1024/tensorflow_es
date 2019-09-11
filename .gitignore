@@ -6,3 +6,4 @@ checkpoint/
 *.txt
 *.mp4
 /misc/experiments_on_voc
+any_test.py

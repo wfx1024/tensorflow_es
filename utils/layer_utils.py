@@ -47,7 +47,7 @@ def conv2d(inputs, filters, kernel_size, strides=1):
         inputs, filters, kernel_size, stride=strides,
         padding=('SAME' if strides == 1 else 'VALID')
     )
-    log = log + "conv--(name: %s kernel_size:%d*%d kernel_num:%d stride:%d " % (inputs.name, kernel_size,  kernel_size, filters, strides)
+    log = log + "\033[0mconv--(name: %s kernel_size:%d*%d kernel_num:%d stride:%d " % (inputs.name, kernel_size,  kernel_size, filters, strides)
     # log = log + "input:%d*%d*%d " % (inputs.shape[1], inputs.shape[2], inputs.shape[3])
     # log = log + "out:%d*%d*%d " % (out.shape[1], out.shape[2], inputs.shape[3])
     print(log)
@@ -114,7 +114,7 @@ def darknet53(inputs):
     :param inputs: input
     :return:
     """
-    print("\033[32mBegin building Darknet-53...]")
+    print("\033[32mBegin building Darknet-53...")
     # 第一层的两个卷积
     net = conv2d(inputs, 32,  3, strides=1)  # 3,3,1
     net = conv2d(net, 64,  3, strides=2)
@@ -144,7 +144,7 @@ def darknet53(inputs):
     for i in range(4):
         net = res(net, 512)
     route_3 = net
-    print("\033[32mFinish building Darknet-53...]")
+    print("\033[32mFinish building Darknet-53...")
     return route_1, route_2, route_3
 
 
@@ -158,7 +158,7 @@ def detect_net(route_1, route_2, route_3, use_static_shape, class_num):
     :param class_num:
     :return:
     """
-    print("\033[32mBegin building detect net after Darknet-53...]")
+    print("\033[32mBegin building detect net after Darknet-53...")
     inter1, feature_map_1 = yolo_block(route_3, 512, class_num)
     inter1 = conv2d(inter1, 256, 1)
     inter1 = upsample_layer(
@@ -173,5 +173,5 @@ def detect_net(route_1, route_2, route_3, use_static_shape, class_num):
     )
     concat2 = tf.concat([inter2, route_1], axis=3)
     _, feature_map_3 = yolo_block(concat2, 128, class_num)
-    print("\033[32mFinishe building detect net after Darknet-53 end...]")
+    print("\033[32mFinishe building detect net after Darknet-53 end...")
     return feature_map_1, feature_map_2, feature_map_3

@@ -93,7 +93,7 @@ with tf.control_dependencies(update_ops):
     train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
 if args.save_optimizer:
-    print('保存optimizer变量到checkpoint文件!后续fine-tuning时restore global_step')
+    # print('\033[0m保存optimizer变量到checkpoint文件!后续fine-tuning时restore global_step')
     saver_to_save = tf.train.Saver()
     saver_best = tf.train.Saver()
 
@@ -153,8 +153,11 @@ with tf.Session() as sess:
 
         # 保存模型
         if epoch % args.save_epoch == 0 and epoch > 0:
+            print('\033[32m-loss_total.average{}'.format(loss_total.average))
             if loss_total.average <= 2.:
+                print('\033[32m ----------- Begin sotre weights-----------')
                 saver_to_save.save(sess, args.save_dir + 'model-epoch_{}_step_{}_loss_{:.4f}_lr_{:.5g}'.format(epoch, int(__global_step), loss_total.average, __lr))
+                print('\033[32m ----------- Begin sotre weights  -----------')
 
         #  验证集评估评估方法
         if epoch % args.val_evaluation_epoch == 0 and epoch >= args.warm_up_epoch:
@@ -180,7 +183,8 @@ with tf.Session() as sess:
             rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
             gt_dict = parse_gt_rec(args.val_file, args.img_size, args.letterbox_resize)
 
-            info = '======> Epoch: {}, global_step: {}, lr: {:.6g} <======\n'.format(epoch, __global_step, __lr)
+            info = 'Epoch: {}, global_step: {}, lr: {:.6g} <======\n'\
+                .format(epoch, __global_step, __lr)
 
             for ii in range(args.class_num):
                 npos, nd, rec, prec, ap = voc_eval(gt_dict, val_preds, ii, iou_thres=args.eval_threshold, use_07_metric=args.use_voc_07_metric)
