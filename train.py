@@ -19,31 +19,67 @@ logging.basicConfig(
 )
 
 
-# handle_flag = tf.placeholder(tf.string, [], name='iterator_handle_flag')
+def get_learning_rate(global_step):
+    """
+    学习率
+    :param global_step:
+    :return:
+    """
+    if args.use_warm_up:
+        learning_rate = tf.cond(
+            tf.less(global_step, args.train_batch_num * args.warm_up_epoch),
+            lambda: args.learning_rate_init * global_step / (args.train_batch_num * args.warm_up_epoch),
+            lambda: config_learning_rate(args, global_step - args.train_batch_num * args.warm_up_epoch)
+        )
+    else:
+        learning_rate = config_learning_rate(args, global_step)
+    return learning_rate
+
+
+def build_optimizer(learning_rate, loss, l2_loss, update_vars, global_step):
+    """
+    生成优化器
+    :return:
+    """
+    # 生成优化器
+    optimizer = config_optimizer(args.optimizer_name, learning_rate)
+    # BN操作
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        # 梯度下降
+        gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)  # 只优化update_vars中参数
+        # 应用gradient clip, 防止梯度爆炸
+        clip_grad_var = [gv if gv[0] is None else [
+            tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
+        train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
+    return train_op
 
 
 def train():
+    # dataset方法
+    train_init_op, val_init_op, image_ids, image, y_true = create_iterator()
+
     # 是否训练placeholders
     is_training = tf.placeholder(tf.bool, name="phase_train")
-    # gpu nms 操作
     pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
     pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
 
+    # gpu nms 操作
     gpu_nms_op = gpu_nms(
         pred_boxes_flag, pred_scores_flag, args.class_num, args.nms_topk,
         args.score_threshold, args.nms_threshold
     )
 
-    # dataset方法
-    train_init_op, val_init_op, image_ids, image, y_true = create_iterator()
-
     # 模型加载
     yolo_model = yolov3(args.class_num, args.anchors, args.use_label_smooth, args.use_focal_loss, args.batch_norm_decay, args.weight_decay, use_static_shape=False)
     with tf.variable_scope('yolov3'):
         pred_feature_maps = yolo_model.forward(image, is_training=is_training)
+    # 预测值
+    y_pred = yolo_model.predict(pred_feature_maps)
     # loss
     loss = yolo_model.compute_loss(pred_feature_maps, y_true)
     l2_loss = tf.losses.get_regularization_loss()
+
     tf.summary.scalar('train_batch_statistics/total_loss', loss[0])
     tf.summary.scalar('train_batch_statistics/loss_xy', loss[1])
     tf.summary.scalar('train_batch_statistics/loss_wh', loss[2])
@@ -51,9 +87,6 @@ def train():
     tf.summary.scalar('train_batch_statistics/loss_class', loss[4])
     tf.summary.scalar('train_batch_statistics/loss_l2', l2_loss)
     tf.summary.scalar('train_batch_statistics/loss_ratio', l2_loss / loss[0])
-
-    # 预测值
-    y_pred = yolo_model.predict(pred_feature_maps)
 
     # 加载除去yolov3/yolov3_head下Conv_6、Conv_14、Conv_22
     saver_to_restore = tf.train.Saver(
@@ -63,18 +96,12 @@ def train():
     )
     # 需要更新的变量
     update_vars = tf.contrib.framework.get_variables_to_restore(include=args.update_part)
-
-    global_step = tf.Variable(float(args.global_step), trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES])
+    global_step = tf.Variable(
+        float(args.global_step), trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES]
+    )
 
     # 学习率
-    if args.use_warm_up:
-        learning_rate = tf.cond(
-            tf.less(global_step, args.train_batch_num * args.warm_up_epoch),
-            lambda: args.learning_rate_init * global_step / (args.train_batch_num * args.warm_up_epoch),
-            lambda: config_learning_rate(args, global_step - args.train_batch_num * args.warm_up_epoch)
-        )
-    else:
-        learning_rate = config_learning_rate(args, global_step)
+    learning_rate = get_learning_rate(global_step)
     tf.summary.scalar('learning_rate', learning_rate)
 
     # 是否要保存优化器的参数
@@ -82,17 +109,19 @@ def train():
         saver_to_save = tf.train.Saver()
         saver_best = tf.train.Saver()
 
-    optimizer = config_optimizer(args.optimizer_name, learning_rate)
+    train_op = build_optimizer(learning_rate, loss, l2_loss, update_vars, global_step)
 
-    # BN操作
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        # 梯度下降
-        gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)  # 只优化update_vars中参数
-        # 应用gradient clip, 防止梯度爆炸
-        clip_grad_var = [gv if gv[0] is None else [
-              tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
-        train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
+    # # 生成优化器
+    # optimizer = config_optimizer(args.optimizer_name, learning_rate)
+    # # BN操作
+    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    # with tf.control_dependencies(update_ops):
+    #     # 梯度下降
+    #     gvs = optimizer.compute_gradients(loss[0] + l2_loss, var_list=update_vars)  # 只优化update_vars中参数
+    #     # 应用gradient clip, 防止梯度爆炸
+    #     clip_grad_var = [gv if gv[0] is None else [
+    #           tf.clip_by_norm(gv[0], 100.), gv[1]] for gv in gvs]
+    #     train_op = optimizer.apply_gradients(clip_grad_var, global_step=global_step)
 
     if args.save_optimizer:
         saver_to_save = tf.train.Saver()
@@ -103,12 +132,10 @@ def train():
         print('\033[32m----------- Begin resotre weights  -----------')
         saver_to_restore.restore(sess, args.restore_path)
         print('\033[32m----------- Finish resotre weights  -----------')
-
         merged = tf.summary.merge_all()
         writer = tf.summary.FileWriter(args.log_dir, sess.graph)
 
         print('\n\033[32m----------- start to train -----------\n')
-
         best_mAP = -np.Inf
         for epoch in range(args.total_epoches):  # epoch
             print('\033[32m---------epoch:{}---------'.format(epoch))
