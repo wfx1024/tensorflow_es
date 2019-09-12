@@ -39,7 +39,7 @@
 
 重画了简洁的结构图，图中灰色部分为Darknet-53。代码中封装了yolo_block的结构，如图中粉色所示，yolo_block的输出，一个流向后方，一个是输出，详细内容可以看代码。
 
-![输入图片说明](https://images.gitee.com/uploads/images/2019/0912/212217_8fcdcf83_1295352.png "1567674551447.png")
+![输入图片说明](https://images.gitee.com/uploads/images/2019/0912/221155_16c4cbac_1295352.png "1568297421457.png")
 
 ## 2.模块
 
