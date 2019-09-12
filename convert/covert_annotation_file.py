@@ -116,16 +116,16 @@ def convert1(img_size, box):
     dh = 1. / (img_size[1])
 
     # (x + y) / 2
-    x = float(box[0]) + float(box[3]) / 2.
-    y = float(box[1]) + float(box[4]) / 2.
-    w = float(box[3])
-    h = float(box[4])
+    x = float(box[0]) + float(box[2]) / 2.
+    y = float(box[1]) + float(box[3]) / 2.
+    w = float(box[2])
+    h = float(box[3])
 
     x = x * dw
     w = w * dw
     y = y * dh
     h = h * dh
-    return [round(x, 5), round(y, 5), round(2, 5), round(h, 5)]
+    return [round(x, 5), round(y, 5), round(w, 5), round(h, 5)]
 
 
 def convert2(box):
@@ -134,10 +134,10 @@ def convert2(box):
     :param box: x, y, w, h
     :return:
     """
-    x_max = int(box[0]) + int(box[3])
-    y_max = int(box[1]) + int(box[4])
-    box[3] = str(x_max)
-    box[4] = str(y_max)
+    x_max = int(box[0]) + int(box[2])
+    y_max = int(box[1]) + int(box[3])
+    box[2] = str(x_max)
+    box[3] = str(y_max)
     return box
 
 
@@ -182,7 +182,7 @@ def convert_annotation(label_file_path, to_file_path, source_img_dir):
 
 def main():
     file_path = "../data/sample/wider_face_val_bbx_gt.txt"  # 注解文件
-    source_img_dir = "D:/dl_data/sample/images"  # 对应的图片文件路径
+    source_img_dir = "F:/sample_data2/WIDERFace/WIDER_val/images"  # 对应的图片文件路径
     to_file_dir = '../data/sample/wider_face_val_bbx_gt3.txt'  # 写入文件路径
     # parse(file_path, source_img_dir)  # 读取画框所有图像
     convert_annotation(file_path, to_file_dir, source_img_dir)  # 转换convert

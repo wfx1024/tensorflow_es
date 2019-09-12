@@ -4,6 +4,7 @@ misc/
 data/darknet_weights
 data/logs
 data/sample
+data/my_data
 test_anytime.py
 /docs
 *.jpg

@@ -113,12 +113,12 @@ def process_box(boxes, labels, img_size, class_num, anchors):
 def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
     """
     解析每行数据到y_true
-    :param line: a line from the training/test txt file
-    :param class_num: totol class nums.
-    :param img_size:  the size of image to be resized to. [width, height] format.
-    :param anchors: anchors.
-    :param mode: 'train' or 'val'. When set to 'train', data_augmentation will be applied.
-    :param use_letterbox_resize:  whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
+    :param line:
+    :param class_num:
+    :param img_size:  [width, height]
+    :param anchors:
+    :param mode: is training
+    :param use_letterbox_resize: 是否应用 letterbox resize
     :return:
     """
     print("line:{}\n\n".format(line))
