@@ -2,8 +2,8 @@
 checkpoint/
 misc/
 /data/darknet_weights
+data/logs
 test_anytime.py
-events.*
 /docs
 *.jpg
 *.txt
