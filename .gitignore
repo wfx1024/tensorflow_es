@@ -1,11 +1,11 @@
 .idea/
 checkpoint/
 misc/
-/data/darknet_weights
+data/darknet_weights
 data/logs
+data/sample
 test_anytime.py
 /docs
 *.jpg
-*.txt
 *.mp4
 *.log
