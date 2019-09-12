@@ -3,47 +3,62 @@
 
 # 一、项目介绍
 
-
 ## 1. 介绍
-采用tensorflow（python）实现 YOLO v1目标检测算法，可对图片，包含图片的文件夹、摄像头和视频进行对如下20个类物体的检测。
+
+采用tensorflow（python）实现 YOLO v3目标检测算法，可对图片，包含图片的文件夹、摄像头和视频进行对如下20个类物体的检测。
 
 ```json
-{"aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"}
-     
+{"person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck",
+ "boat", "traffic", "light", "fire", "hydrant", "stop", "sign", "parking", "meter", 
+ "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", 
+ "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", 
+ "snowboard", "sports", "ball", "kite", "baseball", "bat", "baseball", "glove", 
+ "skateboard", "surfboard", "tennis", "racket", "bottle", "wine", "glass", "cup", 
+ "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+ "carrot", "hot", "dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell", 
+ "phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
+ "scissors", "teddy", "bear", "hair", "drier", "toothbrush"}
 ```
-
-![输入图片说明](https://images.gitee.com/uploads/images/2019/0903/173939_47c6ac87_1295352.jpeg "person.jpg")
-
-![输入图片说明](https://images.gitee.com/uploads/images/2019/0903/173954_c5509657_1295352.jpeg "person.jpg")
 
 ## 2.使用说明
 
-在项目下yolo.py文件中，main方法含有四种检测方式，注释掉其他三种即可。
+目录下有test.py文件，可以做视频或图片的检测。
 
 ```python
-if __name__ == '__main__':
-    yolo = Yolo()
-    # 图片检测
-    yolo.image_detector('test/sample/person.jpg', 'test/result/person.jpg', 'test/result/person.txt')
-    # 多图检测
-    # yolo.multi_img_detector('test/sample', 'test/result')
-    # # 摄像头检测
-    # yolo.camera_detector('test/result/camera.mp4')
-    # # 视频检测
-    # yolo.vedio_detector('test/sample/india_street.mp4', 'test/result/india_street.mp4')
-```
+def main():
+    parser = argparse.ArgumentParser(description='YOLO V3 检测文件')
+    parser.add_argument('--detect_object', default=detect_object, type=str, help='检测目标-img或video')
+    parser.add_argument('--input_image', default=input_image, type=str, help='图片路径')
+    parser.add_argument('--input_video', default=input_video, type=str, help='视频路径')
+    parser.add_argument('--use_letterbox_resize', type=lambda x: (str(x).lower() == 'true'), default=True, help='是否使用letterbox')
 
-其中除camera_detector只有**保存文件**一个参数，其他三个方法都需要**加载文件**和**保存文件**两个参数。
+    input_args = parser.parse_args()
+    # 图片检测
+    if input_args.detect_object == 'img':
+        img_origin = cv2.imread(input_args.input_image)  # 原始图片
+        if img_origin is None:
+            raise Exception('未找到图片文件！')
+        img_detect(input_args)
+
+    # 视频检测
+    elif input_args.detect_object == 'video':
+        vid = cv2.VideoCapture(input_args.input_video)
+        if vid is None:
+            raise Exception('未找到视频文件!')
+        video_detect(input_args)
+```
 
 ## 3.权重文件
 
-如果你要下载**百度网盘**的权重，请点击这里[这里](https://pan.baidu.com/s/1i57uPLF)
+模型是基于COCO训练的YOLO v3。
 
-如果你要下载**谷歌云**的权重，请点击这里[这里](https://drive.google.com/file/d/0B2JbaJSrWLpza08yS2FSUnV2dlE/view?usp=sharing)
+如果你要下载**github**的权重，请点击这里[这里](https://github.com/YunYang1994/tensorflow-yolov3/releases/download/v1.0/yolov3_coco.tar.gz)
+
+如果你要下载**官网**的权重，请点击这里[这里](https://pjreddie.com/darknet/yolo/)
 
 ## 4.文献地址
 
-如果你要查看论文，请点击[这里](https://arxiv.org/abs/1506.02640)
+如果你要查看论文，请点击[这里](https://arxiv.org/abs/1804.02767)
 
 # 二、YOLO v1
 
