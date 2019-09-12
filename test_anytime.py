@@ -1,7 +1,10 @@
 # -*- coding:utf-8 -*-
 
 import tensorflow as tf
-from utils.dataset_utils import create_iterator
+import cv2
+from tqdm import *
+import time
+from utils.data_utils import create_iterator
 
 
 def test_dim_size():
@@ -27,3 +30,35 @@ def test_dataset():
         sess.run(train_init_op)
         for i in range(2):
             sess.run(image)
+
+
+def test_txt_write():
+    first = []
+    second = []
+    f = open('mergeTXT.txt', 'w')
+    with open('first.txt', 'r') as f1:
+        for line in f1:
+            line = line.strip()
+            first.append(line)
+    with open('second.txt', 'r') as f2:
+        for line2 in f2:
+            line2 = line2.strip()
+            second.append(line2)
+    for i in range(0, 399):
+        result = first[i] + '\t' + second[i] + '\n'
+        f.write(result)
+
+
+def test_tqdm():
+    with tqdm(total=100) as pbar:
+        for i in range(10):
+            time.sleep(1)
+            pbar.update(10)
+
+
+def test_plot_bbox():
+    img = cv2.imread('data/demo_data/dog.jpg')
+    # 
+    cv2.rectangle(img, (10, 100), (20, 200), (0, 255, 0), 2)
+    cv2.imshow('img_detect', img)
+    cv2.waitKey(0)

@@ -17,31 +17,31 @@ iter_cnt = 0
 
 def parse_line(line):
     """
-    解析每行(COCO)
-    line format:
-    :param line: 格式 line_index, img_path, img_width, img_height, [box_info_1 (5 number)], ...
-    :return: line_idx, pic_path:
-        boxes: shape [N, 4], N 是GT数量, 4为[x_min, y_min, x_max, y_max]
-        labels: shape [N]. 类别id.
-        img_width: int.
-        img_height: int
+    解析每行(COCO数据集格式)
+    :param line: 格式: line_idx File_name x1 y1 w1 h1 label x2 y2 w2 h2 label x3 y3 w3 h3 label ...
+    :return:
+        line_idx:行数,
+        pic_path: 图片路径
+        boxes: [N, 4], N 是GT数量, 4为[x_min, y_min, x_max, y_max]
+        labels: [N]. 类别id.
+        img_width, img_height: 图片大小
     """
     if 'str' not in str(type(line)):
         line = line.decode()
     s = line.strip().split(' ')
-    assert len(s) > 8, 'Annotation error, one image one bbox at least'
+    assert len(s) > 8, '一个图片至少有一个bbox, 检查标注'
     line_idx = int(s[0])
     pic_path = s[1]
     img_width = int(s[2])
     img_height = int(s[3])
     s = s[4:]
-    assert len(s) % 5 == 0, 'Annotation error, bbox param must be 5.'
+    assert len(s) % 5 == 0, 'bbox至少有5个值, 4-坐标和1-类别, 检查标注'
     box_cnt = len(s) // 5
     boxes = []
     labels = []
     for i in range(box_cnt):
-        label, x_min, y_min, x_max, y_max = int(s[i * 5]), float(s[i * 5 + 1]), float(s[i * 5 + 2]), float(
-            s[i * 5 + 3]), float(s[i * 5 + 4])
+        label, x_min, y_min, x_max, y_max \
+            = int(s[i * 5]), float(s[i * 5 + 1]), float(s[i * 5 + 2]), float(s[i * 5 + 3]), float(s[i * 5 + 4])
         boxes.append([x_min, y_min, x_max, y_max])
         labels.append(label)
     boxes = np.asarray(boxes, np.float32)
@@ -51,48 +51,42 @@ def parse_line(line):
 
 def process_box(boxes, labels, img_size, class_num, anchors):
     """
-    Generate the y_true label, i.e. the ground truth feature_maps in 3 different scales.
-    :param boxes: [N, 5] shape, float32 dtype. `x_min, y_min, x_max, y_mix, mixup_weight`.
-    :param labels: [N] shape, int64 dtype.
+    生成 y_true label, 也就是gt在三种不同维度维度上的feature_maps
+    :param boxes: float32, [N, 5] x_min, y_min, x_max, y_mix, mixup_weight(混合程度).
+    :param labels: int64 [N] shape
     :param img_size:
     :param class_num: int64 num.
-    :param anchors: [9, 4] shape, float32 dtype.
+    :param anchors: [9, 2] float32
     :return:
     """
     anchors_mask = [[6, 7, 8], [3, 4, 5], [0, 1, 2]]
-
-    # convert boxes form:
-    # shape: [N, 2]
-    # (x_center, y_center)
+    # 改变boxes格式: [N, 2], 得到中心点相对值坐标(x_center, y_center), 缩放无影响
     box_centers = (boxes[:, 0:2] + boxes[:, 2:4]) / 2
     # (width, height)
     box_sizes = boxes[:, 2:4] - boxes[:, 0:2]
 
-    # [13, 13, 3, 5+num_class+1] `5` means coords and labels. `1` means mix up weight. 
+    # 416*416举例, 416/31=13: [13, 13, 3, 5+num_class+1]=[13, 13, 3, 86]
+    # 5是坐标和类别标签, 1是mix_up weight(混合程度)
     y_true_13 = np.zeros((img_size[1] // 32, img_size[0] // 32, 3, 6 + class_num), np.float32)
     y_true_26 = np.zeros((img_size[1] // 16, img_size[0] // 16, 3, 6 + class_num), np.float32)
     y_true_52 = np.zeros((img_size[1] // 8, img_size[0] // 8, 3, 6 + class_num), np.float32)
 
-    # mix up weight default to 1.
+    # mix_up weight默认为1.
     y_true_13[..., -1] = 1.
     y_true_26[..., -1] = 1.
     y_true_52[..., -1] = 1.
 
     y_true = [y_true_13, y_true_26, y_true_52]
 
-    # [N, 1, 2]
+    # [N, 2]-->[N, 1, 2]
     box_sizes = np.expand_dims(box_sizes, 1)
-    # broadcast tricks
-    # [N, 1, 2] & [9, 2] ==> [N, 9, 2]
+    # 广播: [N, 1, 2] & [9, 2] ==> [N, 9, 2]
     mins = np.maximum(- box_sizes / 2, - anchors / 2)
     maxs = np.minimum(box_sizes / 2, anchors / 2)
     # [N, 9, 2]
     whs = maxs - mins
-
-    # [N, 9]
-    iou = (whs[:, :, 0] * whs[:, :, 1]) / (
-                box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :,
-                                                                                                         1] + 1e-10)
+    # [N, 9] IoU
+    iou = (whs[:, :, 0] * whs[:, :, 1]) / (box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :, 1] + 1e-10)
     # [N]
     best_match_idx = np.argmax(iou, axis=1)
 
@@ -106,8 +100,7 @@ def process_box(boxes, labels, img_size, class_num, anchors):
         y = int(np.floor(box_centers[i, 1] / ratio))
         k = anchors_mask[feature_map_group].index(idx)
         c = labels[i]
-        # print(feature_map_group, '|', y,x,k,c)
-
+        print("[", i, idx, feature_map_group, "]  ", y, x, k, c)
         y_true[feature_map_group][y, x, k, :2] = box_centers[i]
         y_true[feature_map_group][y, x, k, 2:4] = box_sizes[i]
         y_true[feature_map_group][y, x, k, 4] = 1.
@@ -128,13 +121,15 @@ def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
     :param use_letterbox_resize:  whether to use the letterbox resize, i.e., keep the original aspect ratio in the resized image.
     :return:
     """
+    print("line:{}\n\n".format(line))
+    # 如果一条，则直接解析
     if not isinstance(line, list):
         img_idx, pic_path, boxes, labels, _, _ = parse_line(line)
         img = cv2.imread(pic_path)
         # expand the 2nd dimension, mix up weight default to 1.
         boxes = np.concatenate((boxes, np.full(shape=(boxes.shape[0], 1), fill_value=1., dtype=np.float32)), axis=-1)
+    # 如果两条，则mix up混合
     else:
-        # the mix up case
         _, pic_path1, boxes1, labels1, _, _ = parse_line(line[0])
         img1 = cv2.imread(pic_path1)
         img_idx, pic_path2, boxes2, labels2, _, _ = parse_line(line[1])
@@ -143,39 +138,41 @@ def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
         img, boxes = mix_up(img1, img2, boxes1, boxes2)
         labels = np.concatenate((labels1, labels2))
 
+    # 如果train, 对解析到的img应用各种tricks(bbox随之调整)
     if mode == 'train':
-        # random color jittering
-        # NOTE: applying color distort may lead to bad performance sometimes
+        # 扭曲图片
         img = random_color_distort(img)
 
-        # random expansion with prob 0.5
+        # 50%几率，应用随机放大
         if np.random.uniform(0, 1) > 0.5:
             img, boxes = random_expand(img, boxes, 4)
 
-        # random cropping
+        # 随机裁剪
         h, w, _ = img.shape
         boxes, crop = random_crop_with_constraints(boxes, (w, h))
         x0, y0, w, h = crop
         img = img[y0: y0+h, x0: x0+w]
 
-        # resize with random interpolation
+        # 调整图片大小
         h, w, _ = img.shape
         interp = np.random.randint(0, 5)
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=interp, letterbox=use_letterbox_resize)
+        img, boxes = resize_with_bbox(
+            img, boxes, img_size[0], img_size[1], interp=interp, letterbox=use_letterbox_resize
+        )
 
-        # random horizontal flip
+        # 随机滑动
         h, w, _ = img.shape
         img, boxes = random_flip(img, boxes, px=0.5)
+    # 否则直接将图片调整到输入大小
     else:
-        img, boxes = resize_with_bbox(img, boxes, img_size[0], img_size[1], interp=1, letterbox=use_letterbox_resize)
+        img, boxes = resize_with_bbox(
+            img, boxes, img_size[0], img_size[1], interp=1, letterbox=use_letterbox_resize
+        )
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
-
-    # the input of yolo_v3 should be in range 0~1
-    img = img / 255.
-
+    img = img / 255.   # v3要求值归一化[0, 255]-->[0, 1]
+    # 得到在三种维度上的gt
     y_true_13, y_true_26, y_true_52 = process_box(boxes, labels, img_size, class_num, anchors)
-
     return img_idx, img, y_true_13, y_true_26, y_true_52
 
 
@@ -203,16 +200,18 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
 
     img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = [], [], [], [], []
 
-    # mix up
+    # train且mix up
     if mix_up and mode == 'train':
         mix_lines = []
         batch_line = batch_line.tolist()
         for idx, line in enumerate(batch_line):
             if np.random.uniform(0, 1) < 0.5:
+                # 在当前batch中获取另一个line
                 mix_lines.append([line, random.sample(batch_line[:idx] + batch_line[idx+1:], 1)[0]])
             else:
                 mix_lines.append(line)
         batch_line = mix_lines
+        print("batch:{}\n".format(batch_line))
 
     for line in batch_line:
         img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode, letterbox_resize)
@@ -226,7 +225,6 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
     img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = np.asarray(img_idx_batch, np.int64), np.asarray(img_batch), np.asarray(y_true_13_batch), np.asarray(y_true_26_batch), np.asarray(y_true_52_batch)
 
     return img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch
-
 
 
 def build_train_dataset():

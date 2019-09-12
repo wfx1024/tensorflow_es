@@ -1,6 +1,4 @@
 # coding: utf-8
-# part of this is take from Gluon's repo:
-# https://github.com/dmlc/gluon-cv/blob/master/gluoncv/data/transforms/presets/yolo.py
 
 from __future__ import division, print_function
 
@@ -8,13 +6,22 @@ import random
 import numpy as np
 import cv2
 
+"""
+各种Tricks
+"""
+
 
 def mix_up(img1, img2, bbox1, bbox2):
-    '''
-    return:
+    """
+    mix up混合
+    :param img1:
+    :param img2:
+    :param bbox1:
+    :param bbox2:
+    :return:
         mix_img: HWC format mix up image
         mix_bbox: [N, 5] shape mix up bbox, i.e. `x_min, y_min, x_max, y_mix, mixup_weight`.
-    '''
+    """
     height = max(img1.shape[0], img2.shape[0])
     width = max(img1.shape[1], img2.shape[1])
 
@@ -90,6 +97,7 @@ def bbox_crop(bbox, crop_box=None, allow_outside_center=True):
     bbox = bbox[mask]
     return bbox
 
+
 def bbox_iou(bbox_a, bbox_b, offset=0):
     """Calculate Intersection-Over-Union(IOU) of two bounding boxes.
     Parameters
@@ -120,49 +128,37 @@ def bbox_iou(bbox_a, bbox_b, offset=0):
     return area_i / (area_a[:, None] + area_b - area_i)
 
 
-def random_crop_with_constraints(bbox, size, min_scale=0.3, max_scale=1,
-                                 max_aspect_ratio=2, constraints=None,
-                                 max_trial=50):
-    """Crop an image randomly with bounding box constraints.
+def random_crop_with_constraints(
+        bbox, size, min_scale=0.3, max_scale=1,
+        max_aspect_ratio=2, constraints=None, max_trial=50):
+    """
+    根据bbox限制，随机裁剪图片
     This data augmentation is used in training of
-    Single Shot Multibox Detector [#]_. More details can be found in
-    data augmentation section of the original paper.
-    .. [#] Wei Liu, Dragomir Anguelov, Dumitru Erhan, Christian Szegedy,
-       Scott Reed, Cheng-Yang Fu, Alexander C. Berg.
-       SSD: Single Shot MultiBox Detector. ECCV 2016.
-    Parameters
-    ----------
-    bbox : numpy.ndarray
-        Numpy.ndarray with shape (N, 4+) where N is the number of bounding boxes.
+    Single Shot Multibox Detector
+    更多处理细节见paper, SSD: Single Shot MultiBox Detector. ECCV 2016.
+    :param bbox: numpy.ndarray, Numpy.ndarray with shape (N, 4+) where N is the number of bounding boxes.
         The second axis represents attributes of the bounding box.
         Specifically, these are :math:`(x_{min}, y_{min}, x_{max}, y_{max})`,
         we allow additional attributes other than coordinates, which stay intact
         during bounding box transformations.
-    size : tuple
-        Tuple of length 2 of image shape as (width, height).
-    min_scale : float
-        The minimum ratio between a cropped region and the original image.
+    :param size: tuple, Tuple of length 2 of image shape as (width, height).
+    :param min_scale: float,  The minimum ratio between a cropped region and the original image.
         The default value is :obj:`0.3`.
-    max_scale : float
-        The maximum ratio between a cropped region and the original image.
+    :param max_scale: float, The maximum ratio between a cropped region and the original image.
         The default value is :obj:`1`.
-    max_aspect_ratio : float
-        The maximum aspect ratio of cropped region.
+    :param max_aspect_ratio: float, The maximum aspect ratio of cropped region.
         The default value is :obj:`2`.
-    constraints : iterable of tuples
-        An iterable of constraints.
+    :param constraints: iterable of tuples,  An iterable of constraints.
         Each constraint should be :obj:`(min_iou, max_iou)` format.
         If means no constraint if set :obj:`min_iou` or :obj:`max_iou` to :obj:`None`.
         If this argument defaults to :obj:`None`, :obj:`((0.1, None), (0.3, None),
         (0.5, None), (0.7, None), (0.9, None), (None, 1))` will be used.
-    max_trial : int
-        Maximum number of trials for each constraint before exit no matter what.
-    Returns
-    -------
-    numpy.ndarray
-        Cropped bounding boxes with shape :obj:`(M, 4+)` where M <= N.
-    tuple
-        Tuple of length 4 as (x_offset, y_offset, new_width, new_height).
+    :param max_trial:  int, Maximum number of trials for each constraint before exit no matter what.
+    :return:
+        numpy.ndarray
+            Cropped bounding boxes with shape :obj:`(M, 4+)` where M <= N.
+        tuple
+            Tuple of length 4 as (x_offset, y_offset, new_width, new_height).
     """
     # default params in paper
     if constraints is None:
@@ -218,11 +214,15 @@ def random_crop_with_constraints(bbox, size, min_scale=0.3, max_scale=1,
 
 
 def random_color_distort(img, brightness_delta=32, hue_vari=18, sat_vari=0.5, val_vari=0.5):
-    '''
-    randomly distort image color. Adjust brightness, hue, saturation, value.
-    param:
-        img: a BGR uint8 format OpenCV image. HWC format.
-    '''
+    """
+    随机失真图片颜色. 调整明度、颜色、饱和度和真实值
+    :param img:  a BGR uint8 format OpenCV image. HWC format.
+    :param brightness_delta:
+    :param hue_vari:
+    :param sat_vari:
+    :param val_vari:
+    :return:
+    """
 
     def random_hue(img_hsv, hue_vari, p=0.5):
         if np.random.uniform(0, 1) > p:
@@ -294,9 +294,16 @@ def letterbox_resize(img, new_width, new_height, interp=0):
 
 
 def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False):
-    '''
-    Resize the image and correct the bbox accordingly.
-    '''
+    """
+    调整图片大小，bbox随之调整
+    :param img:
+    :param bbox:
+    :param new_width:
+    :param new_height:
+    :param interp:
+    :param letterbox:
+    :return:
+    """
 
     if letterbox:
         image_padded, resize_ratio, dw, dh = letterbox_resize(img, new_width, new_height, interp)
@@ -321,14 +328,14 @@ def resize_with_bbox(img, bbox, new_width, new_height, interp=0, letterbox=False
 
 
 def random_flip(img, bbox, px=0, py=0):
-    '''
-    Randomly flip the image and correct the bbox.
-    param:
-    px:
-        the probability of horizontal flip
-    py:
-        the probability of vertical flip
-    '''
+    """
+    随机滑动
+    :param img:
+    :param bbox:
+    :param px:the probability of horizontal flip
+    :param py: the probability of vertical flip
+    :return:
+    """
     height, width = img.shape[:2]
     if np.random.uniform(0, 1) < px:
         img = cv2.flip(img, 1)
@@ -347,17 +354,15 @@ def random_flip(img, bbox, px=0, py=0):
 
 
 def random_expand(img, bbox, max_ratio=4, fill=0, keep_ratio=True):
-    '''
-    Random expand original image with borders, this is identical to placing
-    the original image on a larger canvas.
-    param:
-    max_ratio :
-        Maximum ratio of the output image on both direction(vertical and horizontal)
-    fill :
-        The value(s) for padded borders.
-    keep_ratio : bool
-        If `True`, will keep output image the same aspect ratio as input.
-    '''
+    """
+    随机放大
+    :param img:
+    :param bbox:
+    :param max_ratio: Maximum ratio of the output image on both direction(vertical and horizontal)
+    :param fill:The value(s) for padded borders.
+    :param keep_ratio: bool, If `True`, will keep output image the same aspect ratio as input.
+    :return:
+    """
     h, w, c = img.shape
     ratio_x = random.uniform(1, max_ratio)
     if keep_ratio:

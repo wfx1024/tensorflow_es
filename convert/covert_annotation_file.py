@@ -13,6 +13,7 @@ import time
 File name
 Number of bounding box
 x1, y1, w, h, blur, expression, illumination, invalid, occlusion, pose
+x1, y1为左上坐标, w,h为宽高
 
 blur:
   clear->0
@@ -55,8 +56,8 @@ invalid:
 
 """
 现格式:
-File name x1, y1, w, h, label, x1, y1, w, h, label ...
-lable是类别index
+line_idx File_name x1 y1 w1 h1 label x2 y2 w2 h2 label x3 y3 w3 h3 label ...
+label是类别index
 """
 
 
@@ -104,6 +105,42 @@ def parse(label_file_path, src_img_dir):
         line = fr.readline().rstrip()
 
 
+def convert1(img_size, box):
+    """
+    左上角坐标，改成中点，并归一化
+    :param img_size: 图片大小
+    :param box: x, y, w, h
+    :return:
+    """
+    dw = 1. / (img_size[0])
+    dh = 1. / (img_size[1])
+
+    # (x + y) / 2
+    x = float(box[0]) + float(box[3]) / 2.
+    y = float(box[1]) + float(box[4]) / 2.
+    w = float(box[3])
+    h = float(box[4])
+
+    x = x * dw
+    w = w * dw
+    y = y * dh
+    h = h * dh
+    return [round(x, 5), round(y, 5), round(2, 5), round(h, 5)]
+
+
+def convert2(box):
+    """
+    宽高改成右下坐标
+    :param box: x, y, w, h
+    :return:
+    """
+    x_max = int(box[0]) + int(box[3])
+    y_max = int(box[1]) + int(box[4])
+    box[3] = str(x_max)
+    box[4] = str(y_max)
+    return box
+
+
 def convert_annotation(label_file_path, to_file_path, source_img_dir):
     """
     解析写出
@@ -127,16 +164,17 @@ def convert_annotation(label_file_path, to_file_path, source_img_dir):
             img_path = source_img_dir + '/' + path
             img = cv2.imread(img_path)
             shape = img.shape
-            fw.write(path + ' ')
+            fw.write(str(img_num) + ' ' + img_path + ' ')
             fw.write(str(shape[1]) + ' ' + str(shape[0]) + ' ')
             num = fr.readline().rstrip()  # bbox数量
             step += 1
             for n in range(int(num)):  # 每个bbox
                 box = fr.readline().rstrip().split()  # 每个bbox
+                box = convert2(box)
                 step += 1
                 for j in range(4):
-                    fw.write(box[j] + ' ')
-                fw.write('81 ')
+                    fw.write(str(box[j]) + ' ')
+                fw.write('0 ')
             fw.write('\n')
         pbar.update(step)  # 更新进度条
     print("\033[32m转换完成，共有标注图片{}个".format(img_num))
@@ -145,10 +183,9 @@ def convert_annotation(label_file_path, to_file_path, source_img_dir):
 def main():
     file_path = "../data/sample/wider_face_val_bbx_gt.txt"  # 注解文件
     source_img_dir = "D:/dl_data/sample/images"  # 对应的图片文件路径
-    to_file_dir = '../data/sample/wider_face_val_bbx_gt2.txt'  # 写入文件路径
-    # target_img_dir = "data"  # 画框后图片路径
-    parse(file_path, source_img_dir)  # 读取画框所有图像
-    # convert_annotation(file_path, to_file_dir, source_img_dir)  # 转换convert
+    to_file_dir = '../data/sample/wider_face_val_bbx_gt3.txt'  # 写入文件路径
+    # parse(file_path, source_img_dir)  # 读取画框所有图像
+    convert_annotation(file_path, to_file_dir, source_img_dir)  # 转换convert
 
 
 if __name__ == '__main__':
