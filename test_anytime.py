@@ -62,3 +62,14 @@ def test_plot_bbox():
     cv2.rectangle(img, (10, 100), (20, 200), (0, 255, 0), 2)
     cv2.imshow('img_detect', img)
     cv2.waitKey(0)
+
+
+def test_watch_save_weights():
+    from tensorflow.python import pywrap_tensorflow
+    # model_dir = 'checkpoint/model-epoch_12_step_64_loss_1.9270_lr_0.0001'
+    model_dir = 'data/darknet_weights/yolov3.ckpt'
+    reader = pywrap_tensorflow.NewCheckpointReader(model_dir)
+    var_to_shape_map = reader.get_variable_to_shape_map()
+    print("have {} tensor".format(len(var_to_shape_map)))
+    for key in var_to_shape_map:
+        print("tensor_name:{}, shape:{}".format(key, reader.get_tensor(key).shape))

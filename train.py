@@ -215,7 +215,8 @@ def train():
 
                 for j in range(train_args.class_num):
                     npos, nd, rec, prec, ap = voc_eval(
-                        gt_dict, val_preds, j, iou_thres=train_args.eval_threshold, use_07_metric=train_args.use_voc_07_metric
+                        gt_dict, val_preds, j, iou_thres=train_args.eval_threshold,
+                        use_07_metric=train_args.use_voc_07_metric
                     )
                     info += 'EVAL: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(j, rec, prec, ap)
                     rec_total.update(rec, npos)

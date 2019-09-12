@@ -24,7 +24,7 @@ class_name_path = './data/coco.names'  # 类别文件路径
 
 """训练参数"""
 batch_size = 6
-img_size = [416, 416]  # Images will be resized to `img_size` and fed to the network, size format: [width, height]
+img_size = [416, 416]  # 馈送进darknet的图片size, [width, height]
 letterbox_resize = True  # 是否使用letterbox
 total_epoches = 100
 train_evaluation_step = 100  # 训练集训练train_evaluation_step epochs后，使用验证集评估
@@ -41,12 +41,13 @@ prefetech_buffer = 5  # 每个butch取的图片数
 """学习率和优化器"""
 optimizer_name = 'momentum'  # 优化器策略[sgd, momentum, adam, rmsprop]
 save_optimizer = False  # 是否保存优化optimizer参数
+
 learning_rate_init = 1e-4
-lr_type = 'piecewise'  # Chosen from [fixed, exponential, cosine_decay, cosine_decay_restart, piecewise]
-lr_decay_epoch = 5  # Epochs after which learning rate decays. Int or float. Used when chosen `exponential` and `cosine_decay_restart` lr_type.
-lr_decay_factor = 0.96  # The learning rate decay factor. Used when chosen `exponential` lr_type.
-lr_lower_bound = 1e-6  # The minimum learning rate.
-# only used in piecewise lr type
+lr_type = 'piecewise'  # [fixed, exponential, cosine_decay, cosine_decay_restart, piecewise]中选择
+lr_decay_epoch = 5  # Int或者float. 选择exponential或cosine_decay_restart方式时,  学习率衰减.
+lr_decay_factor = 0.96  # 当使用exponential方式, 学习率衰减因素r.
+lr_lower_bound = 1e-6  # 最小学习率
+# piecewise下参数
 pw_boundaries = [30, 50]  # epoch based boundaries
 pw_values = [learning_rate_init, 3e-5, 1e-5]
 
@@ -67,7 +68,7 @@ restore_exclude = [
 ]
 
 # 选择想要fine tune的部分, None则fine-tune整个模型
-update_part = ['yolov3/yolov3_head']
+update_part = ['yolov3/yolov3_head']  # darknet-net frozen, 只fine-tune后续部分
 
 """训练策略Tricks"""
 multi_scale_train = True  # 是否使用multi-scale, 图片大小 [320, 320] 到 [640, 640]
