@@ -62,6 +62,7 @@ v3是融合了ResNet（残差网络），融合浅层和深层信息，防止有
 ## 3.DarkNet-53参数
 
 图中灰色部分为Darknet-53。
+![输入图片说明](https://images.gitee.com/uploads/images/2019/0912/220139_584512a0_1295352.png "1567566269850.png")
 
 ## 4.输出
 
