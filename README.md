@@ -1,4 +1,4 @@
-> 项目地址：https://gitee.com/windandwine/YOLO_v1_tensorflow
+> 项目地址：https://gitee.com/windandwine/YOLO_v3_tensorflow
 > 转载请注明出处
 
 # 一、项目介绍
