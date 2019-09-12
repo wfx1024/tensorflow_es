@@ -9,7 +9,7 @@ sys.path.append('..')
 
 import os
 import tensorflow as tf
-from model import yolov3
+from net.model import yolov3
 
 # params
 ckpt_path = ''

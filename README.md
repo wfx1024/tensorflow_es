@@ -15,7 +15,8 @@
  "snowboard", "sports", "ball", "kite", "baseball", "bat", "baseball", "glove", 
  "skateboard", "surfboard", "tennis", "racket", "bottle", "wine", "glass", "cup", 
  "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
- "carrot", "hot", "dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell", 
+ "carrot", "hot", "dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
+ "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell", 
  "phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
  "scissors", "teddy", "bear", "hair", "drier", "toothbrush"}
 ```
@@ -60,7 +61,7 @@ def main():
 
 如果你要查看论文，请点击[这里](https://arxiv.org/abs/1804.02767)
 
-# 二、YOLO v1
+# 二、Detect
 
 ## 1.候选区域
 
@@ -137,3 +138,6 @@ $$
 ### 4.3筛选候选框
 
 使用非极大值抑制。
+
+# 三.Train
+

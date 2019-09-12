@@ -1,7 +1,7 @@
 # coding=utf-8
 from __future__ import division, print_function
 import tensorflow as tf
-from utils.layer_utils import darknet53, detect_net
+from net.net_module import darknet53, detect_net
 
 slim = tf.contrib.slim
 

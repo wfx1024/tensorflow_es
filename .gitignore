@@ -1,9 +1,11 @@
 .idea/
 checkpoint/
-/data
+misc/
+/data/darknet_weights
+test_anytime.py
+events.*
 /docs
 *.jpg
 *.txt
 *.mp4
-/misc/experiments_on_voc
-any_test.py
+*.log

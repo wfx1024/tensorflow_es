@@ -1,18 +1,18 @@
 # coding: utf-8
+
+from __future__ import division, print_function
+from utils.misc_utils import parse_anchors, read_class_names
+import math
+
 """
 训练配置
 """
 
-from __future__ import division, print_function
-
-from utils.misc_utils import parse_anchors, read_class_names
-import math
-
 """路径文件"""
 input_image = './data/demo_data/dog.jpg'  # 输入图片
 input_vedio = './data/demo_data/video_demo.mp4'  # 输入视频
-train_file = './data/my_data/wider_face_train_bbx_gt.txt'  # 训练文件路径 ./data/my_data/train.txt
-val_file = './data/my_data/wider_face_val_bbx_gt.txt'  # 验证文件路径 ./data/my_data/val.txt
+train_file = './data/sample/train.txt'  # 训练文件路径 # ./data/my_data/wider_face_train_bbx_gt.txt
+val_file = './data/sample/val.txt'  # 验证文件路径 # ./data/my_data/val.txt
 restore_path = './data/darknet_weights/yolov3.ckpt'  # weights路径
 save_dir = './checkpoint/'  # 保存weights路径
 log_dir = './data/logs/'  # 保存tensorboard文件路径.

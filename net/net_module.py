@@ -1,9 +1,11 @@
+# coding=utf-8
+from __future__ import division, print_function
+import tensorflow as tf
+
 
 """
 神经网络模块
 """
-from __future__ import division, print_function
-import tensorflow as tf
 
 slim = tf.contrib.slim
 

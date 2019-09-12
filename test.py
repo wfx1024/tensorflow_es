@@ -10,7 +10,7 @@ from utils.misc_utils import parse_anchors, read_class_names
 from utils.nms_utils import gpu_nms
 from utils.plot_utils import get_color_table, plot_one_box
 from utils.data_aug import letterbox_resize
-from model import yolov3
+from net.model import yolov3
 
 
 detect_object = 'img'  # 默认检测对象
