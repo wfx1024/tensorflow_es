@@ -1,9 +1,9 @@
 > 项目地址：https://gitee.com/windandwine/YOLO_v3_tensorflow
 > 转载请注明出处
 
-# 一、项目介绍
+# 一、项目简介
 
-## 1. 介绍
+## 1. 检测类别
 
 采用tensorflow（python）实现 YOLO v3目标检测算法，可对图片，包含图片的文件夹、摄像头和视频进行对如下20个类物体的检测。
 
@@ -61,7 +61,9 @@ def main():
 
 如果你要查看论文，请点击[这里](https://arxiv.org/abs/1804.02767)
 
-# 二、Detect
+# 二、YOLOv3
+
+
 
 ## 1.候选区域
 
