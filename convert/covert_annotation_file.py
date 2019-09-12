@@ -56,7 +56,7 @@ invalid:
 
 """
 现格式:
-line_idx File_name x1 y1 w1 h1 label x2 y2 w2 h2 label x3 y3 w3 h3 label ...
+line_idx File_name file_w file_h label x1 y1 w1 h1 label x2 y2 w2 h2 ...
 label是类别index
 """
 
@@ -169,12 +169,12 @@ def convert_annotation(label_file_path, to_file_path, source_img_dir):
             num = fr.readline().rstrip()  # bbox数量
             step += 1
             for n in range(int(num)):  # 每个bbox
+                fw.write('0 ')
                 box = fr.readline().rstrip().split()  # 每个bbox
                 box = convert2(box)
                 step += 1
                 for j in range(4):
                     fw.write(str(box[j]) + ' ')
-                fw.write('0 ')
             fw.write('\n')
         pbar.update(step)  # 更新进度条
     print("\033[32m转换完成，共有标注图片{}个".format(img_num))

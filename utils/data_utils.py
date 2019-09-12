@@ -100,7 +100,6 @@ def process_box(boxes, labels, img_size, class_num, anchors):
         y = int(np.floor(box_centers[i, 1] / ratio))
         k = anchors_mask[feature_map_group].index(idx)
         c = labels[i]
-        print("[", i, idx, feature_map_group, "]  ", y, x, k, c)
         y_true[feature_map_group][y, x, k, :2] = box_centers[i]
         y_true[feature_map_group][y, x, k, 2:4] = box_sizes[i]
         y_true[feature_map_group][y, x, k, 4] = 1.
@@ -121,7 +120,6 @@ def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
     :param use_letterbox_resize: 是否应用 letterbox resize
     :return:
     """
-    print("line:{}\n\n".format(line))
     # 如果一条，则直接解析
     if not isinstance(line, list):
         img_idx, pic_path, boxes, labels, _, _ = parse_line(line)
@@ -211,7 +209,6 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
             else:
                 mix_lines.append(line)
         batch_line = mix_lines
-        print("batch:{}\n".format(batch_line))
 
     for line in batch_line:
         img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode, letterbox_resize)
