@@ -80,14 +80,14 @@ def draw(annotation, src_img_dir=None):
     cv2.imshow('img_detect', img)
 
 
-def parse(label_file_path, src_img_dir):
+def parse(annotation_file_path, src_img_dir):
     """
     提取每个图片所有标注
-    :param label_file_path:
+    :param annotation_file_path:
     :param src_img_dir:
     :return:
     """
-    fr = open(label_file_path, 'r')
+    fr = open(annotation_file_path, 'r')
     line = fr.readline().rstrip()
     while line:
         annotation = {}
@@ -105,30 +105,29 @@ def parse(label_file_path, src_img_dir):
         line = fr.readline().rstrip()
 
 
-def convert1(img_size, box):
+def draw_by_line(line_idx, annotation_file_path):
     """
-    左上角坐标，改成中点，并归一化
-    :param img_size: 图片大小
-    :param box: x, y, w, h
+    读取annotation行，找到对应图片，画框
+    :param line_idx:
+    :param annotation_file_path:
     :return:
     """
-    dw = 1. / (img_size[0])
-    dh = 1. / (img_size[1])
+    fr = open(annotation_file_path, 'r')
+    lines = fr.readlines()
+    this_line = lines[line_idx - 1]
+    split_annoatation = this_line.split(" ")
+    path = split_annoatation[1]
+    img = cv2.imread(path)
+    i = 3
+    while i + 5 < len(split_annoatation):
+        x1, y1, x2, y2 = int(split_annoatation[i + 2]), int(split_annoatation[i + 3]), int(split_annoatation[i + 4]), int(split_annoatation[i + 5])
+        i += 5
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    cv2.imshow('img_detect', img)
+    cv2.waitKey(0)
 
-    # (x + y) / 2
-    x = float(box[0]) + float(box[2]) / 2.
-    y = float(box[1]) + float(box[3]) / 2.
-    w = float(box[2])
-    h = float(box[3])
 
-    x = x * dw
-    w = w * dw
-    y = y * dh
-    h = h * dh
-    return [round(x, 5), round(y, 5), round(w, 5), round(h, 5)]
-
-
-def convert2(box):
+def convert(box):
     """
     宽高改成右下坐标
     :param box: x, y, w, h
@@ -141,16 +140,16 @@ def convert2(box):
     return box
 
 
-def convert_annotation(label_file_path, to_file_path, source_img_dir):
+def convert_annotation(annotation_file_path, to_file_path, source_img_dir):
     """
-    解析写出
-    :param label_file_path:
+    解析写出（Wider Face数据集标注样式--> 项目可解析的格式）
+    :param annotation_file_path: 标注文件路径
     :param to_file_path:
     :param source_img_dir
     :return:
     """
-    lines = len(open(label_file_path, 'r').readlines())
-    fr = open(label_file_path, 'r')
+    lines = len(open(annotation_file_path, 'r').readlines())
+    fr = open(annotation_file_path, 'r')
     fw = open(to_file_path, 'w')
 
     img_num = 0
@@ -159,33 +158,47 @@ def convert_annotation(label_file_path, to_file_path, source_img_dir):
         step = 1  # 进度条步数
         line = fr.readline().rstrip()
         if line:
-            img_num += 1  # 图片数
+            num = fr.readline().rstrip()  # bbox数量
             path = line  # 路径
             img_path = source_img_dir + '/' + path
             img = cv2.imread(img_path)
-            shape = img.shape
-            fw.write(str(img_num) + ' ' + img_path + ' ')
-            fw.write(str(shape[1]) + ' ' + str(shape[0]) + ' ')
-            num = fr.readline().rstrip()  # bbox数量
-            step += 1
-            for n in range(int(num)):  # 每个bbox
-                fw.write('0 ')
-                box = fr.readline().rstrip().split()  # 每个bbox
-                box = convert2(box)
+            if img is not None and num is not '0':
+                img_num += 1  # 图片数
+                shape = img.shape
+                fw.write(str(img_num) + ' ' + img_path + ' ')
+                fw.write(str(shape[1]) + ' ' + str(shape[0]) + ' ')
                 step += 1
-                for j in range(4):
-                    fw.write(str(box[j]) + ' ')
-            fw.write('\n')
+                for n in range(int(num)):  # 每个bbox
+                    box = fr.readline().rstrip().split()  # 每个bbox
+                    if box[2] is not '0' and box[3] is not '0':  # 标注宽或高为0则不写入
+                        fw.write('0 ')
+                        box = convert(box)
+                        step += 1
+                        for j in range(4):
+                            fw.write(str(box[j]) + ' ')
+                fw.write('\n')
+            else:
+                fr.readline().rstrip()
+                step += 1
         pbar.update(step)  # 更新进度条
     print("\033[32m转换完成，共有标注图片{}个".format(img_num))
 
 
 def main():
-    file_path = "../data/sample/wider_face_val_bbx_gt.txt"  # 注解文件
-    source_img_dir = "F:/sample_data2/WIDERFace/WIDER_val/images"  # 对应的图片文件路径
-    to_file_dir = '../data/sample/wider_face_val_bbx_gt3.txt'  # 写入文件路径
-    # parse(file_path, source_img_dir)  # 读取画框所有图像
-    convert_annotation(file_path, to_file_dir, source_img_dir)  # 转换convert
+    # 训练集
+    train_anno_file = "../data/sample/wider_face_train_bbx_gt.txt"  # 注解文件
+    train_anno_to_file = '../data/sample/wider_face_train_bbx_gt2.txt'  # 写入文件路径
+    train_img_dir = "F:/data_deeplearning/sample_data/WIDERFace/WIDER_train/images"  # 对应的图片文件路径
+
+    # 验证集
+    val_anno_file = "../data/sample/wider_face_train_bbx_gt.txt"  # 注解文件
+    val_anno_to_file = '../data/sample/wider_face_train_bbx_gt2.txt'  # 写入文件路径
+    val_img_dir = "F:/data_deeplearning/sample_data/WIDERFace/WIDER_train/images"  # 对应的图片文件路径
+
+    convert_annotation(val_anno_file, val_anno_to_file, val_img_dir)  # 注解文件转换成可训练的格式
+
+    # parse(val_anno_file, val_img_dir)  # 读取画框所有图像
+    # draw_by_line(10966, '../data/sample/wider_face_train_bbx_gt2.txt')
 
 
 if __name__ == '__main__':
