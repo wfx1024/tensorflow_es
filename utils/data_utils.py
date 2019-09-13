@@ -86,7 +86,9 @@ def process_box(boxes, labels, img_size, class_num, anchors):
     # [N, 9, 2]
     whs = maxs - mins
     # [N, 9] IoU
-    iou = (whs[:, :, 0] * whs[:, :, 1]) / (box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :, 1] + 1e-10)
+    iou = (whs[:, :, 0] * whs[:, :, 1]) / (
+                box_sizes[:, :, 0] * box_sizes[:, :, 1] + anchors[:, 0] * anchors[:, 1] - whs[:, :, 0] * whs[:, :,
+                                                                                                         1] + 1e-10)
     # [N]
     best_match_idx = np.argmax(iou, axis=1)
 
@@ -149,7 +151,7 @@ def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
         h, w, _ = img.shape
         boxes, crop = random_crop_with_constraints(boxes, (w, h))
         x0, y0, w, h = crop
-        img = img[y0: y0+h, x0: x0+w]
+        img = img[y0: y0 + h, x0: x0 + w]
 
         # 调整图片大小
         h, w, _ = img.shape
@@ -168,13 +170,14 @@ def parse_data(line, class_num, img_size, anchors, mode, use_letterbox_resize):
         )
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
-    img = img / 255.   # v3要求值归一化[0, 255]-->[0, 1]
+    img = img / 255.  # v3要求值归一化[0, 255]-->[0, 1]
     # 得到在三种维度上的gt
     y_true_13, y_true_26, y_true_52 = process_box(boxes, labels, img_size, class_num, anchors)
     return img_idx, img, y_true_13, y_true_26, y_true_52
 
 
-def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False, letterbox_resize=True, interval=10):
+def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=False, mix_up=False,
+                   letterbox_resize=True, interval=10):
     """
     获得批数据(imgs和labels)
     :param batch_line: batch数量的line
@@ -205,21 +208,27 @@ def get_batch_data(batch_line, class_num, img_size, anchors, mode, multi_scale=F
         for idx, line in enumerate(batch_line):
             if np.random.uniform(0, 1) < 0.5:
                 # 在当前batch中获取另一个line
-                mix_lines.append([line, random.sample(batch_line[:idx] + batch_line[idx+1:], 1)[0]])
+                mix_lines.append([line, random.sample(batch_line[:idx] + batch_line[idx + 1:], 1)[0]])
             else:
                 mix_lines.append(line)
         batch_line = mix_lines
 
     for line in batch_line:
-        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(line, class_num, img_size, anchors, mode, letterbox_resize)
-
+        img_idx, img, y_true_13, y_true_26, y_true_52 = parse_data(
+            line, class_num, img_size, anchors, mode, letterbox_resize
+        )
         img_idx_batch.append(img_idx)
         img_batch.append(img)
         y_true_13_batch.append(y_true_13)
         y_true_26_batch.append(y_true_26)
         y_true_52_batch.append(y_true_52)
 
-    img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch = np.asarray(img_idx_batch, np.int64), np.asarray(img_batch), np.asarray(y_true_13_batch), np.asarray(y_true_26_batch), np.asarray(y_true_52_batch)
+    img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch =\
+        np.asarray(img_idx_batch, np.int64), \
+        np.asarray(img_batch), \
+        np.asarray(y_true_13_batch), \
+        np.asarray(y_true_26_batch), \
+        np.asarray(y_true_52_batch)
 
     return img_idx_batch, img_batch, y_true_13_batch, y_true_26_batch, y_true_52_batch
 
@@ -240,7 +249,7 @@ def build_train_dataset():
             Tout=[tf.int64, tf.float32, tf.float32, tf.float32, tf.float32]),
         num_parallel_calls=args.num_threads
     )
-    train_dataset = train_dataset.prefetch(args.prefetech_buffer)  # 每次取1
+    train_dataset = train_dataset.prefetch(args.prefetech_buffer)  # 每次取5
     return train_dataset
 
 

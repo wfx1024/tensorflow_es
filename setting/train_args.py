@@ -11,8 +11,8 @@ import math
 """路径文件"""
 input_image = './data/demo_data/dog.jpg'  # 输入图片
 input_vedio = './data/demo_data/video_demo.mp4'  # 输入视频
-train_file = './data/sample/wider_face_val_bbx_gt3.txt'  # 训练文件路径 # ./data/my_data/wider_face_train_bbx_gt.txt
-val_file = './data/sample/wider_face_val_bbx_gt3.txt'  # 验证文件路径 # ./data/my_data/val.txt
+train_file = './data/sample/wider_face_train_bbx_gt2.txt'  # 训练文件路径
+val_file = './data/sample/wider_face_val_bbx_gt2.txt'  # 验证文件路径
 # train_file = './data/sample/train.txt'
 # val_file = './data/sample/val.txt'
 restore_path = './data/darknet_weights/yolov3.ckpt'  # weights路径
@@ -27,9 +27,9 @@ batch_size = 6
 img_size = [416, 416]  # 馈送进darknet的图片size, [width, height]
 letterbox_resize = True  # 是否使用letterbox
 total_epoches = 100
-train_evaluation_step = 100  # 训练集训练train_evaluation_step epochs后，使用验证集评估
+train_evaluation_step = 100  # 训练集训练多少steps后，计算召回率、精确率
 val_evaluation_epoch = 2  # 训练集训练若干epochs后，使用验证集评估val_evaluation_epoch epochs
-save_epoch = 1  # 多少epochs后保存模型
+save_epoch = 5  # 多少epochs后保存模型
 batch_norm_decay = 0.99  # decay in bn ops
 weight_decay = 5e-4  # l2 weight decay
 global_step = 0  # 重新train时使用

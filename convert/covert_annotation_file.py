@@ -56,7 +56,7 @@ invalid:
 
 """
 现格式:
-line_idx File_name file_w file_h label x1 y1 w1 h1 label x2 y2 w2 h2 ...
+line_idx File_name file_w file_h label x1 y1 x2 y2 label x1 y1 x2 y2 ...
 label是类别index
 """
 
@@ -191,9 +191,9 @@ def main():
     train_img_dir = "F:/data_deeplearning/sample_data/WIDERFace/WIDER_train/images"  # 对应的图片文件路径
 
     # 验证集
-    val_anno_file = "../data/sample/wider_face_train_bbx_gt.txt"  # 注解文件
-    val_anno_to_file = '../data/sample/wider_face_train_bbx_gt2.txt'  # 写入文件路径
-    val_img_dir = "F:/data_deeplearning/sample_data/WIDERFace/WIDER_train/images"  # 对应的图片文件路径
+    val_anno_file = "../data/sample/wider_face_val_bbx_gt.txt"  # 注解文件
+    val_anno_to_file = '../data/sample/wider_face_val_bbx_gt2.txt'  # 写入文件路径
+    val_img_dir = "F:/data_deeplearning/sample_data/WIDERFace/WIDER_val/images"  # 对应的图片文件路径
 
     convert_annotation(val_anno_file, val_anno_to_file, val_img_dir)  # 注解文件转换成可训练的格式
 

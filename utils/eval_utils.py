@@ -6,6 +6,10 @@ from collections import Counter
 from utils.nms_utils import cpu_nms
 from utils.data_utils import parse_line
 
+"""
+验证方法
+"""
+
 
 def calc_iou(pred_boxes, true_boxes):
     """
@@ -42,10 +46,17 @@ def calc_iou(pred_boxes, true_boxes):
 
 
 def evaluate_on_cpu(y_pred, y_true, num_classes, calc_now=True, max_boxes=50, score_thresh=0.5, iou_thresh=0.5):
-    '''
+    """
     Given y_pred and y_true of a batch of data, get the recall and precision of the current batch.
-    '''
-
+    :param y_pred:
+    :param y_true:
+    :param num_classes:
+    :param calc_now:
+    :param max_boxes:
+    :param score_thresh:
+    :param iou_thresh:
+    :return:
+    """
     num_images = y_true[0].shape[0]
     true_labels_dict = {i: 0 for i in range(num_classes)}  # {class: count}
     pred_labels_dict = {i: 0 for i in range(num_classes)}
@@ -136,11 +147,20 @@ def evaluate_on_cpu(y_pred, y_true, num_classes, calc_now=True, max_boxes=50, sc
 
 
 def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred, y_true, num_classes, iou_thresh=0.5, calc_now=True):
-    '''
-    Given y_pred and y_true of a batch of data, get the recall and precision of the current batch.
+    """
+     Given y_pred and y_true of a batch of data, get the recall and precision of the current batch.
     This function will perform gpu operation on the GPU.
-    '''
-
+    :param sess:
+    :param gpu_nms_op:
+    :param pred_boxes_flag:
+    :param pred_scores_flag:
+    :param y_pred:
+    :param y_true:
+    :param num_classes:
+    :param iou_thresh:
+    :param calc_now:
+    :return:
+    """
     num_images = y_true[0].shape[0]
     true_labels_dict = {i: 0 for i in range(num_classes)}  # {class: count}
     pred_labels_dict = {i: 0 for i in range(num_classes)}
@@ -232,7 +252,7 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
 
 def get_preds_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, image_ids, y_pred):
     """
-    Given the y_pred of an input image, get the predicted bbox and label info.
+    从输入图片的y_pred, 提取bbox和label信息
     :param sess:
     :param gpu_nms_op:
     :param pred_boxes_flag:
@@ -270,7 +290,7 @@ gt_dict = {}  # key: img_id, value: gt object list
 
 def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
     """
-    parse and re-organize the gt info.
+    解析整理标注文件的gt信息.
     :param gt_filename:
     :param target_img_size:
     :param letterbox_resize:
@@ -282,7 +302,10 @@ def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
         new_width, new_height = target_img_size
         with open(gt_filename, 'r') as f:
             for line in f:
-                img_id, pic_path, boxes, labels, ori_width, ori_height = parse_line(line)
+                try:
+                    img_id, pic_path, boxes, labels, ori_width, ori_height = parse_line(line)
+                except:
+                    print(line, "解析失败")
 
                 objects = []
                 for i in range(len(labels)):
@@ -311,12 +334,11 @@ def parse_gt_rec(gt_filename, target_img_size, letterbox_resize=True):
     return gt_dict
 
 
-# The following two functions are modified from FAIR's Detectron repo to calculate mAP:
+# 下面两个由FAIR's修改的方法, Detection repo计算mAP:
 
 def voc_ap(rec, prec, use_07_metric=False):
     """
-    Compute VOC AP given precision and recall. If use_07_metric is true, uses
-    the VOC 07 11-point method (default:False).
+    计算VOC AP given 正确率prec和召回率rec。如果 use_07_metric=true, 使用 VOC 07 11-point方法 (default:False).
     :param rec:
     :param prec:
     :param use_07_metric:
@@ -332,12 +354,12 @@ def voc_ap(rec, prec, use_07_metric=False):
                 p = np.max(prec[rec >= t])
             ap = ap + p / 11.
     else:
-        # correct AP calculation
+        # 矫正AP计算
         # first append sentinel values at the end
         mrec = np.concatenate(([0.], rec, [1.]))
         mpre = np.concatenate(([0.], prec, [0.]))
 
-        # compute the precision envelope
+        # 计算正确率
         for i in range(mpre.size - 1, 0, -1):
             mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
 
@@ -352,72 +374,72 @@ def voc_ap(rec, prec, use_07_metric=False):
 
 def voc_eval(gt_dict, val_preds, classidx, iou_thres=0.5, use_07_metric=False):
     """
-    Top level function that does the PASCAL VOC evaluation.
-    :param gt_dict:
-    :param val_preds:
-    :param classidx:
+    根据gt和pred评估模型验证集的表现
+    :param gt_dict: gt参数
+    :param val_preds: pred参数
+    :param classidx: 该类别idx
     :param iou_thres:
     :param use_07_metric:
     :return:
     """
-    # 1.obtain gt: extract all gt objects for this class
-    class_recs = {}
+    # 1.获得gt: 该类别的所有gt
+    class_recs = {}  # 每个图片的gt和det
     npos = 0
     for img_id in gt_dict:
-        R = [obj for obj in gt_dict[img_id] if obj[-1] == classidx]
-        bbox = np.array([x[:4] for x in R])
-        det = [False] * len(R)
+        R = [obj for obj in gt_dict[img_id] if obj[-1] == classidx]  # 提取gt
+        bbox = np.array([x[:4] for x in R])  # n*4 一个图片的所有gt  rename=gt_one_img
+        det = [False] * len(R)  # n个bool list
         npos += len(R)
         class_recs[img_id] = {'bbox': bbox, 'det': det}
 
-    # 2. obtain pred results
+    # 2.获得pred的结果
     pred = [x for x in val_preds if x[-1] == classidx]
     img_ids = [x[0] for x in pred]
     confidence = np.array([x[-2] for x in pred])
-    BB = np.array([[x[1], x[2], x[3], x[4]] for x in pred])
+    BB = np.array([[x[1], x[2], x[3], x[4]] for x in pred])  # predict的bboxes
 
-    # 3. sort by confidence
+    # 3. 对之置信度排序
     sorted_ind = np.argsort(-confidence)
     try:
         BB = BB[sorted_ind, :]
     except:
         print('no box, ignore')
         return 1e-6, 1e-6, 0, 0, 0
-    img_ids = [img_ids[x] for x in sorted_ind]
+    img_ids = [img_ids[x] for x in sorted_ind]  # 按置信度顺序排序img_ids
 
-    # 4. mark TPs and FPs
+    # 4. 计算混淆矩阵中的TP(真阳)和FP(假阳)，就是正确率和错误率
     nd = len(img_ids)
     tp = np.zeros(nd)
     fp = np.zeros(nd)
 
     for d in range(nd):
         # all the gt info in some image
-        R = class_recs[img_ids[d]]
-        bb = BB[d, :]
+        R = class_recs[img_ids[d]]  # 通过img_id获取gt和det
+        bb = BB[d, :]  # bbox
         ovmax = -np.Inf
         BBGT = R['bbox']
 
         if BBGT.size > 0:
-            # calc iou
-            # intersection
+            # 计算 IoU 交叉区域
+
             ixmin = np.maximum(BBGT[:, 0], bb[0])
             iymin = np.maximum(BBGT[:, 1], bb[1])
             ixmax = np.minimum(BBGT[:, 2], bb[2])
             iymax = np.minimum(BBGT[:, 3], bb[3])
             iw = np.maximum(ixmax - ixmin + 1., 0.)
             ih = np.maximum(iymax - iymin + 1., 0.)
-            inters = iw * ih
+            inters = iw * ih  # 重叠区域面积
 
-            # union
+            # 合并 面积
             uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) + (BBGT[:, 2] - BBGT[:, 0] + 1.) * (
                         BBGT[:, 3] - BBGT[:, 1] + 1.) - inters)
 
-            overlaps = inters / uni
-            ovmax = np.max(overlaps)
-            jmax = np.argmax(overlaps)
+            overlaps = inters / uni  # IoU
+            ovmax = np.max(overlaps)  # IoU最大值
+            jmax = np.argmax(overlaps)  # IoU最大idx
 
         if ovmax > iou_thres:
-            # gt not matched yet
+            # gt不匹配
             if not R['det'][jmax]:
                 tp[d] = 1.
                 R['det'][jmax] = 1
@@ -430,10 +452,12 @@ def voc_eval(gt_dict, val_preds, classidx, iou_thres=0.5, use_07_metric=False):
     fp = np.cumsum(fp)
     tp = np.cumsum(tp)
     rec = tp / float(npos)
-    # avoid divide by zero in case the first detection matches a difficult
-    # ground truth
-    prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
+
+    prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)  # 正确率, 防止第一次除以0
     ap = voc_ap(rec, prec, use_07_metric)
 
     # return rec, prec, ap
-    return npos, nd, tp[-1] / float(npos), tp[-1] / float(nd), ap
+    if npos != 0:
+        return npos, nd, tp[-1] / float(npos), tp[-1] / float(nd), ap
+    else:
+        return 0, 1, 1, 1, 1
