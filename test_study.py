@@ -73,3 +73,4 @@ def test_watch_save_weights():
     print("have {} tensor".format(len(var_to_shape_map)))
     for key in var_to_shape_map:
         print("tensor_name:{}, shape:{}".format(key, reader.get_tensor(key).shape))
+
