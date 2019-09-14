@@ -133,13 +133,12 @@ def train():
             loss_total, loss_xy, loss_wh, loss_conf, loss_class\
                 = AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
-            for i in trange(train_args.train_batch_num):  # batch
-                # print('\n\033[32m-----train batch:{}----'.format(i))
+            for _ in trange(train_args.train_batch_num):  # batch
                 # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
-                _, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
-                    [train_op, merged, y_pred, y_true, loss, global_step, learning_rate],
-                    feed_dict={is_training: True})
-                # print('\033[32m-global_step:{}-'.format(__global_step))
+                _, __image_ids, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
+                    [train_op, image_ids, merged, y_pred, y_true, loss, global_step, learning_rate],
+                    feed_dict={is_training: True}
+                )
                 writer.add_summary(summary, global_step=__global_step)
 
                 # 更新误差
@@ -149,7 +148,7 @@ def train():
                 loss_conf.update(__loss[3], len(__y_pred[0]))
                 loss_class.update(__loss[4], len(__y_pred[0]))
 
-                # 验证集上验证
+                # 验证
                 if __global_step % train_args.train_evaluation_step == 0 and __global_step > 0:
                     # 召回率,精确率
                     recall, precision = evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, __y_pred, __y_true, train_args.class_num, train_args.nms_threshold)
@@ -189,8 +188,8 @@ def train():
                     AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter(), AverageMeter()
 
                 val_preds = []
-
-                for _ in trange(train_args.val_img_cnt):  # 在整个验证集上验证
+                print('\033[32m -----Begin computing each pred in one epoch of val data-----------')
+                for i in trange(train_args.val_img_cnt):  # 在整个验证集上验证
                     __image_ids, __y_pred, __loss = sess.run(
                         [image_ids, y_pred, loss], feed_dict={is_training: False}
                     )
@@ -200,47 +199,48 @@ def train():
                     )
 
                     val_preds.extend(pred_content)
-                    # 更新误差
+                    # 更新训练集误差
                     val_loss_total.update(__loss[0])
                     val_loss_xy.update(__loss[1])
                     val_loss_wh.update(__loss[2])
                     val_loss_conf.update(__loss[3])
                     val_loss_class.update(__loss[4])
-
+                    if i % 300 == 0:
+                        print(i, "--loss-->", __loss)
+                print('\033[32m -----Finish computing each pred in one epoch of val data-----------')
                 # 计算验证集mAP
                 rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
                 gt_dict = parse_gt_rec(train_args.val_file, train_args.img_size, train_args.letterbox_resize)
 
-                info = 'Epoch: {}, global_step: {}, lr: {:.6g} \n'.format(epoch, __global_step, __lr)
-
+                print('\033[32m -----Begin calculate mAP-------\033[0m')
+                info = 'Epoch: {}, global_step: {}, lr: {:.6g} \n'.format(epoch, __global_step, __lr)  # todo
                 for j in range(train_args.class_num):
                     npos, nd, rec, prec, ap = voc_eval(
                         gt_dict, val_preds, j, iou_thres=train_args.eval_threshold,
                         use_07_metric=train_args.use_voc_07_metric
                     )
-                    info += 'EVAL: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(j, rec, prec, ap)
+                    info += 'eval: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(j, rec, prec, ap)
                     rec_total.update(rec, npos)
                     prec_total.update(prec, nd)
                     ap_total.update(ap, 1)
 
                 mAP = ap_total.average
-                info += 'EVAL: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n'\
+                info += 'eval: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n'\
                     .format(rec_total.average, prec_total.average, mAP)
-                info += 'EVAL: loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f}\n'\
+                info += 'eval: loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f}\n'\
                     .format(val_loss_total.average, val_loss_xy.average,
                             val_loss_wh.average, val_loss_conf.average, val_loss_class.average)
-
                 print(info)
                 logging.info(info)
+                print('\033[32m -----Begin calculate mAP-------\033[0m')
 
                 if mAP > best_mAP:
                     best_mAP = mAP
                     saver_best.save(
                         sess,
                         train_args.save_dir + 'best_model_Epoch_{}_step_{}_mAP_{:.4f}_loss_{:.4f}_lr_{:.7g}'
-                        .format(epoch, int(__global_step), best_mAP, val_loss_total.average, __lr)
+                        .format(epoch, int(__global_step), best_mAP, val_loss_total.average, __lr)  # todo
                     )
-
                 writer.add_summary(make_summary('evaluation/val_mAP', mAP), global_step=epoch)
                 writer.add_summary(make_summary('evaluation/val_recall', rec_total.average), global_step=epoch)
                 writer.add_summary(make_summary('evaluation/val_precision', prec_total.average), global_step=epoch)
