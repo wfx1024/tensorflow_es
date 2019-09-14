@@ -141,13 +141,17 @@ class Train:
         self.merged = tf.summary.merge_all()
 
     def train(self):
+        """
+        训练主体函数
+        :return:
+        """
         print('\n\033[32m-----------Begin train -----------\033[0m\n')
         for epoch in range(train_args.total_epoches):  # epoch
             print('\033[32m---------epoch:{}---------\033[0m'.format(epoch))
             self.epoch = epoch
             self.sess.run(self.train_init_op)  # 初始化训练集dataset
 
-            for _ in trange(train_args.train_batch_num // 500):  # batch
+            for _ in trange(train_args.train_batch_num):  # batch
                 # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
                 _, __image_ids, summary, __y_pred, __y_true, __loss, __global_step, __lr = self.sess.run(
                     [self.train_op, self.image_ids, self.merged, self.y_pred,
@@ -163,7 +167,7 @@ class Train:
                 self.__evaluate(__y_pred, __y_true, __global_step, __lr)
 
             # 保存模型
-            if epoch % train_args.save_epoch == 0 and epoch > 0:
+            if (epoch + 1) % train_args.save_epoch == 0 and epoch > 0:
                 if self.loss_5.loss_total.average <= 2.:
                     print('\033[32m ----------- Begin sotre weights-----------\033[0m')
                     self.saver_to_save.save(
@@ -219,7 +223,7 @@ class Train:
         self.sess.run(self.val_init_op)
         val_loss_5 = Loss5()
         val_preds = []
-        for i in trange(train_args.val_img_cnt // 500):  # 在整个验证集上验证
+        for _ in trange(train_args.val_img_cnt):  # 在整个验证集上验证
             __image_ids, __y_pred, __loss = self.sess.run(
                 [self.image_ids, self.y_pred, self.loss], feed_dict={self.is_training: False}
             )
@@ -231,29 +235,29 @@ class Train:
             val_preds.extend(pred_content)
             # 更新训练集误差
             val_loss_5.update(__loss)
-            if i % 300 == 0:
-                print(i, "--loss-->", __loss)
+
+        print("\nfinally--loss-->", __loss)
 
         # 计算验证集mAP
         rec_total, prec_total, ap_total = AverageMeter(), AverageMeter(), AverageMeter()
         gt_dict = parse_gt_rec(train_args.val_file, train_args.img_size, train_args.letterbox_resize)
 
-        print('\033[32m -----Begin calculate mAP-------\033[0m')
-        info = 'Epoch: {}, global_step: {}, lr: {:.6g} \n'.format(self.epoch, __global_step, __lr)  # todo
+        print('\n\033[32m -----Begin calculate mAP-------\033[0m')
+        info = 'epoch:{}, global_step:{}, lr:{:.6g} \n'.format(self.epoch, __global_step, __lr)
         for j in range(train_args.class_num):
             npos, nd, rec, prec, ap = voc_eval(
                 gt_dict, val_preds, j, iou_thres=train_args.eval_threshold,
                 use_07_metric=train_args.use_voc_07_metric
             )
-            info += 'eval: Class {}: Recall: {:.4f}, Precision: {:.4f}, AP: {:.4f}\n'.format(j, rec, prec, ap)
+            info += 'eval in each class:\nclass{}: recall:{:.4f}, precision:{:.4f}, AP:{:.4f}\n'.format(j, rec, prec, ap)
             rec_total.update(rec, npos)
             prec_total.update(prec, nd)
             ap_total.update(ap, 1)
 
         mAP = ap_total.average
-        info += 'eval: Recall: {:.4f}, Precison: {:.4f}, mAP: {:.4f}\n' \
+        info += 'eval: recall:{:.4f}, precision:{:.4f}, mAP:{:.4f}, ' \
             .format(rec_total.average, prec_total.average, mAP)
-        info += 'eval: loss: total: {:.2f}, xy: {:.2f}, wh: {:.2f}, conf: {:.2f}, class: {:.2f}\n'\
+        info += 'loss: total:{:.2f}, xy:{:.2f}, wh:{:.2f}, conf:{:.2f}, class:{:.2f}\n'\
             .format(
                 val_loss_5.loss_total.average,
                 val_loss_5.loss_xy.average,

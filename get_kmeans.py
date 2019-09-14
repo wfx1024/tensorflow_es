@@ -5,6 +5,7 @@ from __future__ import division, print_function
 
 import numpy as np
 
+
 def iou(box, clusters):
     """
     Calculates the Intersection over Union (IoU) between a box and k clusters.
