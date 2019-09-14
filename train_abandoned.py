@@ -12,6 +12,10 @@ from utils.eval_utils import evaluate_on_gpu, get_preds_gpu, voc_eval, parse_gt_
 from utils.nms_utils import gpu_nms
 from net.model import yolov3
 
+"""
+未封装的train类，已弃用
+"""
+
 # log
 logging.basicConfig(
     level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s',
