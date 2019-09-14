@@ -20,7 +20,7 @@ save_dir = './checkpoint/'  # 保存weights路径
 log_dir = './data/logs/'  # 保存tensorboard文件路径.
 progress_log_path = './data/progress.log'  # 记录training progress文件路径
 anchor_path = './data/yolo_anchors.txt'  # anchor路径文件
-class_name_path = './data/class.names'  # 类别文件路径
+class_name_path = './data/fine_tuning_class.names'  # 类别文件路径
 
 """训练参数"""
 batch_size = 6
