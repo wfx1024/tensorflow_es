@@ -124,6 +124,8 @@ line_idx File_name file_w file_h label x1 y1 w1 h1 label x2 y2 w2 h2 ...
 
 入口func在./train.py中，直接运行即可。
 
+**用wider face数据集训练时报错，因为数据集中有width或者height为0的标注框导致**，fine-tuning洗数据千万小心。
+
 # 五、Tricks
 
 v3很多tricks来自于v2，如BN、multi-scale、特征融合等。
