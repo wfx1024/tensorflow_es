@@ -38,13 +38,13 @@ def gpu_nms(boxes, scores, num_classes, max_boxes=50, score_thresh=0.5, nms_thre
     # Step 2: Do non_max_suppression for each class
     for i in range(num_classes):
         # Step 3: Apply the mask to scores, boxes and pick them out
-        filter_boxes = tf.boolean_mask(boxes, mask[:,i])
-        filter_score = tf.boolean_mask(score[:,i], mask[:,i])
-        nms_indices = tf.image.non_max_suppression(boxes=filter_boxes,
-                                                   scores=filter_score,
-                                                   max_output_size=max_boxes,
-                                                   iou_threshold=nms_thresh, name='nms_indices')
-        label_list.append(tf.ones_like(tf.gather(filter_score, nms_indices), 'int32')*i)
+        filter_boxes = tf.boolean_mask(boxes, mask[:, i])
+        filter_score = tf.boolean_mask(score[:, i], mask[:, i])
+        nms_indices = tf.image.non_max_suppression(
+            boxes=filter_boxes, scores=filter_score, max_output_size=max_boxes,
+            iou_threshold=nms_thresh, name='nms_indices')
+
+        label_list.append(tf.ones_like(tf.gather(filter_score, nms_indices), 'int32') * i)
         boxes_list.append(tf.gather(filter_boxes, nms_indices))
         score_list.append(tf.gather(filter_score, nms_indices))
 
