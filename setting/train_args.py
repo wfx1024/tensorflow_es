@@ -20,7 +20,7 @@ save_dir = './checkpoint/'  # 保存weights路径
 log_dir = './data/logs/'  # 保存tensorboard文件路径.
 progress_log_path = './data/progress.log'  # 记录training progress文件路径
 anchor_path = './data/yolo_anchors.txt'  # anchor路径文件
-class_name_path = './data/coco.names'  # 类别文件路径
+class_name_path = './data/class.names'  # 类别文件路径
 
 """训练参数"""
 batch_size = 6
@@ -28,7 +28,7 @@ img_size = [416, 416]  # 馈送进darknet的图片size, [width, height]
 letterbox_resize = True  # 是否使用letterbox
 total_epoches = 100
 train_evaluation_step = 100  # 训练集训练多少steps后，计算召回率、精确率
-val_evaluation_epoch = 2  # 训练集训练若干epochs后，使用验证集评估val_evaluation_epoch epochs
+val_evaluation_epoch = 1  # 训练集训练若干epochs后，使用验证集评估val_evaluation_epoch epochs
 save_epoch = 5  # 多少epochs后保存模型
 batch_norm_decay = 0.99  # decay in bn ops
 weight_decay = 5e-4  # l2 weight decay
@@ -76,7 +76,7 @@ use_label_smooth = True  # 是否使用label smoothing(gt分布混合)
 use_focal_loss = True  # focal loss on the conf loss.
 use_mix_up = True  # 是否用mix up(数据增强, 抗扰动)
 use_warm_up = True  # 是否使用warm up(预热训练)，先使用小学习率，一定epoch后再用大的学习率
-warm_up_epoch = 3  # warm up训练多少epoch
+warm_up_epoch = 0  # warm up训练多少epoch
 
 """验证参数"""
 # nms

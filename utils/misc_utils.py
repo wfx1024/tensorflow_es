@@ -11,7 +11,29 @@ def make_summary(name, val):
     return summary_pb2.Summary(value=[summary_pb2.Summary.Value(tag=name, simple_value=val)])
 
 
+class Loss5:
+    """
+    五种损失
+    """
+    def __init__(self):
+        self.loss_total = AverageMeter()
+        self.loss_xy = AverageMeter()
+        self.loss_wh = AverageMeter()
+        self.loss_conf = AverageMeter()
+        self.loss_class = AverageMeter()
+
+    def update(self, loss, n=1):
+        self.loss_total.update(loss[0], n)
+        self.loss_xy.update(loss[1], n)
+        self.loss_wh.update(loss[2], n)
+        self.loss_conf.update(loss[3], n)
+        self.loss_class.update(loss[4], n)
+
+
 class AverageMeter(object):
+    """
+    一个损失
+    """
     def __init__(self):
         self.reset()
 

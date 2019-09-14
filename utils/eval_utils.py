@@ -148,8 +148,7 @@ def evaluate_on_cpu(y_pred, y_true, num_classes, calc_now=True, max_boxes=50, sc
 
 def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred, y_true, num_classes, iou_thresh=0.5, calc_now=True):
     """
-     Given y_pred and y_true of a batch of data, get the recall and precision of the current batch.
-    This function will perform gpu operation on the GPU.
+    根据当前batch上的y_pred和y_true得到召回率和精确率(GPU)
     :param sess:
     :param gpu_nms_op:
     :param pred_boxes_flag:
@@ -173,15 +172,12 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
             true_probs_temp = y_true[j][i][..., 5:-1]
             # shape: [13, 13, 3, 4] (x_center, y_center, w, h)
             true_boxes_temp = y_true[j][i][..., 0:4]
-
             # [13, 13, 3]
             object_mask = true_probs_temp.sum(axis=-1) > 0
-
             # [V, 80] V: Ground truth number of the current image
             true_probs_temp = true_probs_temp[object_mask]
             # [V, 4]
             true_boxes_temp = true_boxes_temp[object_mask]
-
             # [V], labels, each from 0 to 79
             true_labels_list += np.argmax(true_probs_temp, axis=-1).tolist()
             # [V, 4] (x_center, y_center, w, h)
@@ -206,16 +202,15 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
         # pred_confs: [N]
         # pred_labels: [N]
         # N: Detected box number of the current image
-        pred_boxes, pred_confs, pred_labels = sess.run(gpu_nms_op,
-                                                       feed_dict={pred_boxes_flag: pred_boxes,
-                                                                  pred_scores_flag: pred_confs * pred_probs})
+        pred_boxes, pred_confs, pred_labels = sess.run(
+            gpu_nms_op, feed_dict={pred_boxes_flag: pred_boxes, pred_scores_flag: pred_confs * pred_probs}
+        )
         # len: N
         pred_labels_list = [] if pred_labels is None else pred_labels.tolist()
-        if pred_labels_list == []:
+        if not pred_labels_list:
             continue
 
-        # calc iou
-        # [N, V]
+        # 计算IoU [N, V]
         iou_matrix = calc_iou(pred_boxes, true_boxes)
         # [N]
         max_iou_idx = np.argmax(iou_matrix, axis=-1)
@@ -241,10 +236,9 @@ def evaluate_on_gpu(sess, gpu_nms_op, pred_boxes_flag, pred_scores_flag, y_pred,
             true_positive_dict[true_labels_list[t]] += 1
 
     if calc_now:
-        # avoid divided by 0
+        # 避免除以0
         recall = sum(true_positive_dict.values()) / (sum(true_labels_dict.values()) + 1e-6)
         precision = sum(true_positive_dict.values()) / (sum(pred_labels_dict.values()) + 1e-6)
-
         return recall, precision
     else:
         return true_positive_dict, true_labels_dict, pred_labels_dict
@@ -392,6 +386,9 @@ def voc_eval(gt_dict, val_preds, classidx, iou_thres=0.5, use_07_metric=False):
         npos += len(R)
         class_recs[img_id] = {'bbox': bbox, 'det': det}
 
+    if npos == 0:  # 没有该类样本，直接返回
+        return 0, 1, 1, 1, 1
+
     # 2.获得pred的结果
     pred = [x for x in val_preds if x[-1] == classidx]
     img_ids = [x[0] for x in pred]
@@ -457,7 +454,4 @@ def voc_eval(gt_dict, val_preds, classidx, iou_thres=0.5, use_07_metric=False):
     ap = voc_ap(rec, prec, use_07_metric)
 
     # return rec, prec, ap
-    if npos != 0:
-        return npos, nd, tp[-1] / float(npos), tp[-1] / float(nd), ap
-    else:
-        return 0, 1, 1, 1, 1
+    return npos, nd, tp[-1] / float(npos), tp[-1] / float(nd), ap
