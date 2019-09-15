@@ -56,6 +56,13 @@ def test_tqdm():
             pbar.update(10)
 
 
+def test_tqdm2():
+    with trange(10000) as t:
+        for i in t:
+            t.set_description('下载速度 %i' % i)
+
+
+
 def test_plot_bbox():
     img = cv2.imread('data/demo_data/dog.jpg')
     # 

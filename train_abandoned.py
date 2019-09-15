@@ -139,10 +139,12 @@ def train():
 
             for _ in trange(train_args.train_batch_num):  # batch
                 # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
-                _, __image_ids, summary, __y_pred, __y_true, __loss, __global_step, __lr = sess.run(
-                    [train_op, image_ids, merged, y_pred, y_true, loss, global_step, learning_rate],
+                _, __image_ids, summary, __y_pred, __y_true, __loss, __l2_loss, __global_step, __lr = sess.run(
+                    [train_op, image_ids, merged, y_pred, y_true,
+                     loss, l2_loss, global_step, learning_rate],
                     feed_dict={is_training: True}
                 )
+                print(__l2_loss)
                 writer.add_summary(summary, global_step=__global_step)
 
                 # 更新误差

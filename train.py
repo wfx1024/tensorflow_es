@@ -61,7 +61,6 @@ class Train:
         self.pred_boxes_flag = tf.placeholder(tf.float32, [1, None, None])
         self.pred_scores_flag = tf.placeholder(tf.float32, [1, None, None])
         self.best_mAP = -np.Inf
-        self.l2_loss = tf.losses.get_regularization_loss()
         self.global_step = tf.Variable(
             float(train_args.global_step), trainable=False, collections=[tf.GraphKeys.LOCAL_VARIABLES]
         )
@@ -71,8 +70,6 @@ class Train:
         self.sess = tf.Session()
         self.epoch = 0
         self.writer = tf.summary.FileWriter(train_args.log_dir, self.sess.graph)
-        # 训练集5种损失
-        self.loss_5 = Loss5()
         self.__pre_operate()
 
     def __loss_summary(self):
@@ -109,6 +106,7 @@ class Train:
         self.y_pred = yolo_model.predict(pred_feature_maps)
         # loss
         self.loss = yolo_model.compute_loss(pred_feature_maps, self.y_true)
+        self.l2_loss = tf.losses.get_regularization_loss()
         # 学习率
         self.learning_rate = get_learning_rate(self.global_step)
         self.__loss_summary()
@@ -150,24 +148,30 @@ class Train:
             print('\033[32m---------epoch:{}---------\033[0m'.format(epoch))
             self.epoch = epoch
             self.sess.run(self.train_init_op)  # 初始化训练集dataset
+            # 训练集5种损失
+            self.loss_5 = Loss5()
+            with trange(train_args.train_batch_num) as t:
+                for _ in t:  # batch
+                    # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
+                    _, __image_ids, summary, __y_pred, __y_true, __loss, __l2_loss, __global_step, __lr = self.sess.run(
+                        [self.train_op, self.image_ids, self.merged, self.y_pred, self.y_true,
+                         self.loss, self.l2_loss, self.global_step, self.learning_rate],
+                        feed_dict={self.is_training: True}
+                    )
+                    self.writer.add_summary(summary, global_step=__global_step)
+                    # 更新误差 loss_total, loss_xy, loss_wh, loss_conf, loss_class
+                    self.loss_5.update(__loss, len(__y_pred[0]))
+                    # self.__evaluate(__y_pred, __y_true, __global_step, __lr)
 
-            for _ in trange(train_args.train_batch_num):  # batch
-                # 优化器. summary, 预测值, gt, 损失, global_step, 学习率
-                _, __image_ids, summary, __y_pred, __y_true, __loss, __global_step, __lr = self.sess.run(
-                    [self.train_op, self.image_ids, self.merged, self.y_pred,
-                     self.y_true, self.loss, self.global_step, self.learning_rate],
-                    feed_dict={self.is_training: True}
-                )
-                self.writer.add_summary(summary, global_step=__global_step)
-                # 更新误差 loss_total, loss_xy, loss_wh, loss_conf, loss_class
-                self.loss_5.update(__loss, len(__y_pred[0]))
-                # self.__evaluate(__y_pred, __y_true, __global_step, __lr)
+                    info = "{}=loss_total:{:.1f},xy:{:.2f},wh:{:.2f},conf:{:.2f},cls:{:.2f},L2:{:.7f}" \
+                        .format(int(__global_step), __loss[0], __loss[1], __loss[2], __loss[3], __loss[4], __l2_loss)
+                    t.set_postfix_str(info)
 
-            if __global_step % train_args.train_evaluation_step == 0 and __global_step > 0:
-                self.__evaluate(__y_pred, __y_true, __global_step, __lr)
+                    if __global_step % train_args.train_evaluation_step == 0 and __global_step > 0:
+                        self.__evaluate(__y_pred, __y_true, __global_step, __lr)
 
             # 保存模型
-            if (epoch + 1) % train_args.save_epoch == 0 and epoch > 0:
+            if epoch % train_args.save_epoch == 0 and epoch > 0:
                 if self.loss_5.loss_total.average <= 2.:
                     print('\033[32m ----------- Begin sotre weights-----------\033[0m')
                     self.saver_to_save.save(
