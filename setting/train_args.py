@@ -15,12 +15,12 @@ train_file = './data/sample/wider_face_train_bbx_gt2.txt'  # 训练文件路径
 val_file = './data/sample/wider_face_val_bbx_gt2.txt'  # 验证文件路径
 # train_file = './data/sample/train.txt'
 # val_file = './data/sample/val.txt'
-restore_path = './data/weights10/best_model_Epoch_10_step_23605_mAP_0.9928_loss_14.1599_lr_0.0001'  # weights路径
+restore_path = './data/darknet_weights/yolov3.ckpt'  # weights路径
 save_dir = './checkpoint/'  # 保存weights路径
 log_dir = './data/logs/'  # 保存tensorboard文件路径.
 progress_log_path = './data/progress.log'  # 记录training progress文件路径
 anchor_path = './data/yolo_anchors.txt'  # anchor路径文件
-class_name_path = './data/fine_tuning_class.names'  # 类别文件路径
+class_name_path = './data/coco.names'  # 类别文件路径
 
 """训练参数"""
 batch_size = 6
